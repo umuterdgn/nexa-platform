@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { MockProduct } from "@/lib/products-mock";
+import type { ProductCardData } from "@/types/product-card";
 
-export function PricingCard({ product }: { product: MockProduct }) {
+export function PricingCard({ product }: { product: ProductCardData }) {
+  const isService = product.type === "service";
+
   return (
     <article
       className={cn(
@@ -19,6 +21,10 @@ export function PricingCard({ product }: { product: MockProduct }) {
         </span>
       )}
 
+      <span className="mb-3 inline-block w-fit rounded-full bg-white/5 px-2.5 py-0.5 text-xs font-medium uppercase tracking-wider text-slate-400">
+        {isService ? "Hizmet" : "SaaS"}
+      </span>
+
       <h3 className="font-display text-xl font-semibold text-white">
         {product.title}
       </h3>
@@ -30,7 +36,7 @@ export function PricingCard({ product }: { product: MockProduct }) {
         <span className="font-display text-4xl font-bold text-white">
           ₺{product.price}
         </span>
-        <span className="text-slate-500">/ {product.period}</span>
+        {!isService && <span className="text-slate-500">/ aylık</span>}
       </div>
 
       <ul className="mt-8 flex-1 space-y-3">
@@ -43,7 +49,7 @@ export function PricingCard({ product }: { product: MockProduct }) {
       </ul>
 
       <Link
-        href={`/checkout/${product.id}`}
+        href={isService ? "/hizmetler" : `/checkout/${product.slug}`}
         className={cn(
           "mt-8 block rounded-xl py-3 text-center text-sm font-semibold transition",
           product.highlighted
@@ -51,7 +57,7 @@ export function PricingCard({ product }: { product: MockProduct }) {
             : "border border-[#1D4ED8]/40 text-white hover:bg-[#1D4ED8]/10"
         )}
       >
-        Hemen Başla
+        {isService ? "Bilgi Al" : "Hemen Başla"}
       </Link>
     </article>
   );
