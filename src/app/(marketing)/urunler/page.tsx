@@ -6,7 +6,7 @@ import { Navbar } from "@/components/layout/Navbar";
 export const dynamic = "force-dynamic";
 
 export default async function UrunlerPage() {
-  let saasProducts: any[] = [];
+  let products: any[] = [];
   let serviceProducts: any[] = [];
   let isEmpty = true;
 
@@ -35,10 +35,12 @@ export default async function UrunlerPage() {
             Nexa Çözümleri
           </p>
           <h1 className="mt-4 font-display text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl">
-            İşinizi büyüten <span className="text-gradient-nexa">Nexa ürünleri</span>
+            İşinizi büyüten{" "}
+            <span className="text-gradient-nexa">Nexa ürünleri</span>
           </h1>
           <p className="mt-6 text-lg text-slate-400">
-            SaaS paketleri ve ajans hizmetleri — veritabanından anlık ve dinamik listelenir.
+            SaaS paketleri ve ajans hizmetleri — veritabanından anlık ve dinamik
+            listelenir.
           </p>
         </div>
 
@@ -49,7 +51,6 @@ export default async function UrunlerPage() {
           </div>
         ) : (
           <div className="space-y-20">
-            
             {/* 🌌 SAAS ÜRÜNLERİ BÖLÜMÜ */}
             {saasProducts.length > 0 && (
               <div>
@@ -59,7 +60,9 @@ export default async function UrunlerPage() {
                 <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3 items-stretch">
                   {saasProducts.map((product: any) => {
                     const productId = product._id.toString();
-                    const hasDiscount = product.discountPrice > 0 && product.discountPrice < product.price;
+                    const hasDiscount =
+                      product.discountPrice > 0 &&
+                      product.discountPrice < product.price;
 
                     return (
                       <div
@@ -80,9 +83,14 @@ export default async function UrunlerPage() {
                                 </span>
                                 <div className="flex items-baseline gap-0.5">
                                   <span className="text-3xl font-bold tracking-tight text-emerald-400">
-                                    ₺{product.discountPrice.toLocaleString("tr-TR")}
+                                    ₺
+                                    {product.discountPrice.toLocaleString(
+                                      "tr-TR",
+                                    )}
                                   </span>
-                                  <span className="text-xs text-slate-400">/aylık</span>
+                                  <span className="text-xs text-slate-400">
+                                    /aylık
+                                  </span>
                                 </div>
                               </div>
                             ) : (
@@ -90,7 +98,9 @@ export default async function UrunlerPage() {
                                 <span className="text-3xl font-bold tracking-tight">
                                   ₺{product.price.toLocaleString("tr-TR")}
                                 </span>
-                                <span className="ml-1 text-sm font-semibold text-slate-400">/aylık</span>
+                                <span className="ml-1 text-sm font-semibold text-slate-400">
+                                  /aylık
+                                </span>
                               </>
                             )}
                           </div>
@@ -101,14 +111,31 @@ export default async function UrunlerPage() {
 
                           {product.features && product.features.length > 0 && (
                             <ul className="mt-6 space-y-3 border-t border-white/5 pt-6 text-sm text-slate-300">
-                              {product.features.map((feature: string, idx: number) => (
-                                <li key={idx} className="flex items-center gap-2.5">
-                                  <svg className="h-4 w-4 flex-shrink-0 text-nexa-electric-bright" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                                  </svg>
-                                  <span className="line-clamp-1">{feature}</span>
-                                </li>
-                              ))}
+                              {product.features.map(
+                                (feature: string, idx: number) => (
+                                  <li
+                                    key={idx}
+                                    className="flex items-center gap-2.5"
+                                  >
+                                    <svg
+                                      className="h-4 w-4 flex-shrink-0 text-nexa-electric-bright"
+                                      fill="none"
+                                      viewBox="0 0 24 24"
+                                      stroke="currentColor"
+                                      strokeWidth="3"
+                                    >
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        d="M5 13l4 4L19 7"
+                                      />
+                                    </svg>
+                                    <span className="line-clamp-1">
+                                      {feature}
+                                    </span>
+                                  </li>
+                                ),
+                              )}
                             </ul>
                           )}
                         </div>
@@ -137,7 +164,9 @@ export default async function UrunlerPage() {
                 <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3 items-stretch">
                   {serviceProducts.map((product: any) => {
                     const productId = product._id.toString();
-                    const hasDiscount = product.discountPrice > 0 && product.discountPrice < product.price;
+                    const hasDiscount =
+                      product.discountPrice > 0 &&
+                      product.discountPrice < product.price;
 
                     return (
                       <div
@@ -158,9 +187,14 @@ export default async function UrunlerPage() {
                                 </span>
                                 <div className="flex items-baseline gap-0.5">
                                   <span className="text-3xl font-bold tracking-tight text-emerald-400">
-                                    ₺{product.discountPrice.toLocaleString("tr-TR")}
+                                    ₺
+                                    {product.discountPrice.toLocaleString(
+                                      "tr-TR",
+                                    )}
                                   </span>
-                                  <span className="text-xs text-slate-400">/proje</span>
+                                  <span className="text-xs text-slate-400">
+                                    /proje
+                                  </span>
                                 </div>
                               </div>
                             ) : (
@@ -168,7 +202,9 @@ export default async function UrunlerPage() {
                                 <span className="text-3xl font-bold tracking-tight">
                                   ₺{product.price.toLocaleString("tr-TR")}
                                 </span>
-                                <span className="ml-1 text-sm font-semibold text-slate-400">/proje</span>
+                                <span className="ml-1 text-sm font-semibold text-slate-400">
+                                  /proje
+                                </span>
                               </>
                             )}
                           </div>
@@ -179,14 +215,31 @@ export default async function UrunlerPage() {
 
                           {product.features && product.features.length > 0 && (
                             <ul className="mt-6 space-y-3 border-t border-white/5 pt-6 text-sm text-slate-300">
-                              {product.features.map((feature: string, idx: number) => (
-                                <li key={idx} className="flex items-center gap-2.5">
-                                  <svg className="h-4 w-4 flex-shrink-0 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                                  </svg>
-                                  <span className="line-clamp-1">{feature}</span>
-                                </li>
-                              ))}
+                              {product.features.map(
+                                (feature: string, idx: number) => (
+                                  <li
+                                    key={idx}
+                                    className="flex items-center gap-2.5"
+                                  >
+                                    <svg
+                                      className="h-4 w-4 flex-shrink-0 text-purple-400"
+                                      fill="none"
+                                      viewBox="0 0 24 24"
+                                      stroke="currentColor"
+                                      strokeWidth="3"
+                                    >
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        d="M5 13l4 4L19 7"
+                                      />
+                                    </svg>
+                                    <span className="line-clamp-1">
+                                      {feature}
+                                    </span>
+                                  </li>
+                                ),
+                              )}
                             </ul>
                           )}
                         </div>
@@ -205,7 +258,6 @@ export default async function UrunlerPage() {
                 </div>
               </div>
             )}
-
           </div>
         )}
 
