@@ -2,11 +2,11 @@ import Link from "next/link";
 import { connectMongoDB } from "@/lib/mongodb";
 import { Product } from "@/models/Product";
 import { Navbar } from "@/components/layout/Navbar";
+import { User } from "@/models/User";
 
 export const dynamic = "force-dynamic";
 
 export default async function UrunlerPage() {
-  // 🔥 İŞTE ÇÖZÜM BURADA: Tüm değişkenler tipleriyle birlikte en baştan tanımlanıyor.
   let products: any[] = [];
   let saasProducts: any[] = [];
   let serviceProducts: any[] = [];
@@ -14,9 +14,19 @@ export default async function UrunlerPage() {
 
   try {
     await connectMongoDB();
-    const _force = Product.modelName; // Mongoose şema kilidini açar
 
-    products = await Product.find({}).sort({ createdAt: -1 }).lean();
+    const _force = Product.modelName;
+
+    // Örnek kullanıcı
+    const user = await User.findOne({
+      email: "admin@test.com",
+    }).lean();
+
+    products = await Product.find({
+      business_id: user?.business_id,
+    })
+      .sort({ createdAt: -1 })
+      .lean();
 
     saasProducts = products.filter((p: any) => p.type === "saas");
     serviceProducts = products.filter((p: any) => p.type === "service");
@@ -24,7 +34,6 @@ export default async function UrunlerPage() {
   } catch (error) {
     console.error("Ürünler çekilirken DB hatası oluştu:", error);
   }
-
   return (
     <div className="min-h-screen bg-black text-foreground selection:bg-nexa-electric/30">
       <Navbar />
