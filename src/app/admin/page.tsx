@@ -1,6 +1,8 @@
 import { connectMongoDB } from "@/lib/mongodb";
 import User from "@/models/User";
 import { Product } from "@/models/Product";
+// 🔥 EKSİK OLAN IMPORT: Abonelik modelini dahil ediyoruz
+import { Subscription } from "@/models/Subscription";
 import { Users, Package, TrendingUp, Sparkles, HelpCircle } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -8,27 +10,21 @@ export const dynamic = "force-dynamic";
 export default async function AdminOverview() {
   await connectMongoDB();
 
-  // Şema tetikleme güvenlik önlemi
-  const _force = Product.modelName;
+  // Şema tetikleme güvenlik önlemleri
+  const _forceP = Product.modelName;
+  const _forceS = Subscription?.modelName;
 
-  // Tüm kritik verileri paralel olarak DB'den çekiyoruz
-  const [users, products] = await Promise.all([
+  // 🔥 ÇÖZÜM: Tüm verileri doğrudan kendi tablolarından çekiyoruz
+  const [users, products, totalActiveSubs] = await Promise.all([
     User.find({}).lean(),
-    Product.find({}).sort({ salesCount: -1 }).limit(3).lean(), // En çok satan ilk 3 ürünü çek
+    Product.find({}).sort({ salesCount: -1 }).limit(3).lean(),
+    Subscription.countDocuments({ status: "active" }), // Aktif abonelikleri direkt sayıyoruz
   ]);
 
   const customers = users.filter((u) => u.role !== "admin");
 
-  // Aktif abonelik analitiği
-  let totalActiveSubs = 0;
-  users.forEach((u: any) => {
-    if (u.subscriptions) {
-      totalActiveSubs += u.subscriptions.filter(
-        (s: any) => s.status === "active",
-      ).length;
-    }
-  });
-
+  // Yeni toplam ciro hesaplaması
+  const simulatedRevenue = totalActiveSubs * 2450;
   return (
     <div className="p-8 lg:p-12">
       {/* Karşılama Başlığı */}

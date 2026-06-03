@@ -1,45 +1,35 @@
-import mongoose, {
-  Schema,
-  models,
-  model,
-  type Document,
-  type Model,
-} from "mongoose";
+import mongoose, { Schema, model, models } from "mongoose";
 
-export type ProductType = "saas" | "service";
-
-export interface IProduct {
+export interface IProductDocument {
   title: string;
+  slug: string;
   description: string;
   price: number;
-  type: ProductType;
-  features: string[];
-  slug: string;
+  discountPrice?: number; // İndirim alanı
+  type: "saas" | "service";
+  durationDays?: number;  // Süre alanı (30 / 365)
+  salesCount?: number;
+  requiredFields?: string[];
+  features?: string[];
+  createdAt: Date;
+  updatedAt: Date;
 }
 
-export interface IProductDocument extends IProduct, Document {}
-
-// src/models/Product.ts şemana eklenecek/güncellenecek alanlar:
-const ProductSchema = new Schema(
+const ProductSchema = new Schema<IProductDocument>(
   {
     title: { type: String, required: true },
     slug: { type: String, required: true, unique: true },
     description: { type: String, required: true },
     price: { type: Number, required: true },
-    discountPrice: { type: Number, default: 0 }, // İndirimli fiyat alanı
+    discountPrice: { type: Number, default: 0 }, // Şemaya zorunlu ekleme
     type: { type: String, enum: ["saas", "service"], required: true },
-
-    // 🔥 Yeni Eklenen Esnek Alanlar:
-    durationDays: { type: Number, default: 30 }, // Admin panelden 30, 365 (yıllık) veya 0 (sınırsız) seçebileceksin
-    salesCount: { type: Number, default: 0 }, // Ne kadar tercih edildiğini sayacak metrik
-
-    // 📋 Hizmet siparişlerinde müşteriden istenecek dinamik form alanları (Örn: ["logo", "renk_tercihi", "rakip_firmalar"])
+    durationDays: { type: Number, default: 30 }, // Şemaya zorunlu ekleme
+    salesCount: { type: Number, default: 0 },
     requiredFields: { type: [String], default: [] },
-
     features: { type: [String], default: [] },
   },
-  { timestamps: true },
+  { timestamps: true }
 );
 
-export const Product: Model<IProductDocument> =
-  models.Product ?? model<IProductDocument>("Product", ProductSchema);
+// Named export yapımızı koruyoruz
+export const Product = models.Product || model<IProductDocument>("Product", ProductSchema);

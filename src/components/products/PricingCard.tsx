@@ -1,64 +1,97 @@
+"use client";
+
 import Link from "next/link";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { ProductCardData } from "@/types/product-card";
 
-export function PricingCard({ product }: { product: ProductCardData }) {
-  const isService = product.type === "service";
+export function PricingCard({ product }: { product: any }) {
+  // Üründe geçerli bir indirim var mı kontrolü
+  const hasDiscount =
+    product.discountPrice > 0 && product.discountPrice < product.price;
 
   return (
-    <article
+    <div
       className={cn(
-        "relative flex flex-col rounded-2xl border p-8 transition duration-300",
+        "flex flex-col justify-between rounded-2xl border p-6 shadow-xl transition-all duration-300 bg-nexa-anthracite/40",
         product.highlighted
-          ? "border-[#1D4ED8]/50 bg-gradient-to-b from-[#1D4ED8]/10 to-[#0F172A]/80 shadow-[0_0_40px_rgba(29,78,216,0.15)]"
-          : "border-white/10 bg-[#0F172A]/50 hover:border-[#1D4ED8]/30"
+          ? "border-nexa-electric shadow-nexa-electric/5 scale-[1.02] lg:scale-105"
+          : "border-white/5 hover:border-white/10",
       )}
     >
-      {product.highlighted && (
-        <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-[#1D4ED8] px-3 py-1 text-xs font-semibold text-white">
-          En Popüler
-        </span>
-      )}
+      <div>
+        {/* Üst Başlık ve Öne Çıkan Rozeti */}
+        <div className="flex items-center justify-between">
+          <h3 className="font-display text-xl font-semibold text-white">
+            {product.title}
+          </h3>
+          {product.highlighted && (
+            <span className="rounded-full bg-nexa-electric/15 px-2.5 py-1 text-xs font-semibold text-nexa-electric-bright font-mono">
+              En Popüler
+            </span>
+          )}
+        </div>
 
-      <span className="mb-3 inline-block w-fit rounded-full bg-white/5 px-2.5 py-0.5 text-xs font-medium uppercase tracking-wider text-slate-400">
-        {isService ? "Hizmet" : "SaaS"}
-      </span>
+        {/* 💰 Gelişmiş Fiyat Alanı (İndirim Duyarlı) */}
+        <div className="mt-4 flex items-baseline text-white">
+          {hasDiscount ? (
+            <div className="flex flex-col">
+              <span className="text-xs text-slate-500 line-through font-mono">
+                ₺{product.price.toLocaleString("tr-TR")}
+              </span>
+              <div className="flex items-baseline">
+                <span className="text-3xl font-bold tracking-tight text-emerald-400">
+                  ₺{product.discountPrice.toLocaleString("tr-TR")}
+                </span>
+                <span className="ml-1 text-xs text-slate-400 font-medium">
+                  /{product.type === "saas" ? "aylık" : "proje"}
+                </span>
+              </div>
+            </div>
+          ) : (
+            <>
+              <span className="text-3xl font-bold tracking-tight">
+                ₺{product.price.toLocaleString("tr-TR")}
+              </span>
+              <span className="ml-1 text-xs text-slate-400 font-medium">
+                /{product.type === "saas" ? "aylık" : "proje"}
+              </span>
+            </>
+          )}
+        </div>
 
-      <h3 className="font-display text-xl font-semibold text-white">
-        {product.title}
-      </h3>
-      <p className="mt-2 text-sm leading-relaxed text-slate-400">
-        {product.description}
-      </p>
+        {/* Açıklama */}
+        <p className="mt-4 text-sm text-slate-400 leading-relaxed min-h-[60px]">
+          {product.description}
+        </p>
 
-      <div className="mt-6 flex items-baseline gap-1">
-        <span className="font-display text-4xl font-bold text-white">
-          ₺{product.price}
-        </span>
-        {!isService && <span className="text-slate-500">/ aylık</span>}
+        {/* Özellikler */}
+        <ul className="mt-6 space-y-3 border-t border-white/5 pt-6 text-sm text-slate-300">
+          {product.features.map((feature: string, idx: number) => (
+            <li key={idx} className="flex items-center gap-2.5">
+              <Check
+                size={14}
+                className="text-nexa-electric-bright flex-shrink-0"
+              />
+              <span className="truncate">{feature}</span>
+            </li>
+          ))}
+        </ul>
       </div>
 
-      <ul className="mt-8 flex-1 space-y-3">
-        {product.features.map((feature) => (
-          <li key={feature} className="flex items-start gap-3 text-sm text-slate-300">
-            <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#3B82F6]" strokeWidth={2.5} />
-            {feature}
-          </li>
-        ))}
-      </ul>
-
-      <Link
-        href={isService ? "/hizmetler" : `/checkout/${product.slug}`}
-        className={cn(
-          "mt-8 block rounded-xl py-3 text-center text-sm font-semibold transition",
-          product.highlighted
-            ? "bg-[#1D4ED8] text-white shadow-[0_0_24px_rgba(29,78,216,0.4)] hover:bg-[#2563EB]"
-            : "border border-[#1D4ED8]/40 text-white hover:bg-[#1D4ED8]/10"
-        )}
-      >
-        {isService ? "Bilgi Al" : "Hemen Başla"}
-      </Link>
-    </article>
+      {/* 🚀 Ödeme Sayfasına Uçuran Dinamik Buton */}
+      <div className="mt-8">
+        <Link
+          href={`/checkout/${product.id}`} // Veritabanındaki gerçek ID'ye yönlendiriyor
+          className={cn(
+            "block w-full rounded-xl py-3 text-center text-sm font-semibold text-white shadow-md transition-all active:scale-[0.98]",
+            product.highlighted
+              ? "bg-nexa-electric hover:bg-nexa-electric-bright shadow-neon-sm"
+              : "bg-white/5 border border-white/10 hover:bg-white/10",
+          )}
+        >
+          Hemen Başla
+        </Link>
+      </div>
+    </div>
   );
 }
