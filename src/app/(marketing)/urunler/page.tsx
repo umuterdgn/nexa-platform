@@ -1,31 +1,24 @@
 import Link from "next/link";
 import { connectMongoDB } from "@/lib/mongodb";
 import { Product } from "@/models/Product";
-import { Navbar } from "@/components/layout/Navbar"; // Yeni dinamik navbarımızı bağlıyoruz
+import { Navbar } from "@/components/layout/Navbar";
 
-// Sayfanın her zaman en güncel DB verisini çekmesi için force-dynamic yapıyoruz
 export const dynamic = "force-dynamic";
 
 export default async function UrunlerPage() {
-  let saasProducts = [];
-  let serviceProducts = [];
+  let saasProducts: any[] = [];
+  let serviceProducts: any[] = [];
   let isEmpty = true;
 
   try {
     await connectMongoDB();
 
-    // Turbopack / Mongoose şema tetikleme önlemi
     const _force = Product.modelName;
-
-    // 🔥 ÇÖZÜM 1: Plain JS nesnesi almak için sorguya .lean() ekledik. 
-    // Bu sayede _id verileri Next.js mimarisinde asla bozulmaz ve checkout linki tıkır tıkır çalışır.
     const products = await Product.find({}).sort({ createdAt: -1 }).lean();
 
-    // Ürünleri türlerine göre ayıklıyoruz (İstediğin profesyonel kategorizasyon)
     saasProducts = products.filter((p: any) => p.type === "saas");
     serviceProducts = products.filter((p: any) => p.type === "service");
     isEmpty = products.length === 0;
-
   } catch (error) {
     console.error("Ürünler çekilirken DB hatası oluştu:", error);
   }
@@ -78,7 +71,7 @@ export default async function UrunlerPage() {
                             {product.title}
                           </h3>
 
-                          {/* 🔥 ÇÖZÜM 2: Akıllı ve İndirim Duyarlı Fiyat Alanı */}
+                          {/* İndirim Duyarlı Fiyat Alanı */}
                           <div className="mt-4 flex items-baseline text-white">
                             {hasDiscount ? (
                               <div className="flex flex-col">
