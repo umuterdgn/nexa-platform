@@ -6,15 +6,17 @@ import { Navbar } from "@/components/layout/Navbar";
 export const dynamic = "force-dynamic";
 
 export default async function UrunlerPage() {
+  // 🔥 İŞTE ÇÖZÜM BURADA: Tüm değişkenler tipleriyle birlikte en baştan tanımlanıyor.
   let products: any[] = [];
+  let saasProducts: any[] = [];
   let serviceProducts: any[] = [];
   let isEmpty = true;
 
   try {
     await connectMongoDB();
+    const _force = Product.modelName; // Mongoose şema kilidini açar
 
-    const _force = Product.modelName;
-    const products = await Product.find({}).sort({ createdAt: -1 }).lean();
+    products = await Product.find({}).sort({ createdAt: -1 }).lean();
 
     saasProducts = products.filter((p: any) => p.type === "saas");
     serviceProducts = products.filter((p: any) => p.type === "service");
@@ -24,19 +26,19 @@ export default async function UrunlerPage() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-foreground selection:bg-blue-500/30">
-      {/* Akıllı Giriş/Çıkış Kontrollü Navbar */}
+    <div className="min-h-screen bg-black text-foreground selection:bg-nexa-electric/30">
       <Navbar />
 
       <main className="mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:py-32">
-        {/* Başlık Alanı */}
         <div className="text-center max-w-3xl mx-auto mb-20">
           <p className="text-sm font-semibold uppercase tracking-[0.2em] text-nexa-electric-bright">
             Nexa Çözümleri
           </p>
           <h1 className="mt-4 font-display text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl">
             İşinizi büyüten{" "}
-            <span className="text-gradient-nexa">Nexa ürünleri</span>
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-nexa-electric-bright to-purple-400">
+              Nexa ürünleri
+            </span>
           </h1>
           <p className="mt-6 text-lg text-slate-400">
             SaaS paketleri ve ajans hizmetleri — veritabanından anlık ve dinamik
@@ -44,14 +46,13 @@ export default async function UrunlerPage() {
           </p>
         </div>
 
-        {/* Dinamik Ürün Grid Alanı */}
         {isEmpty ? (
           <div className="rounded-2xl border border-dashed border-white/15 bg-slate-900/40 p-12 text-center max-w-md mx-auto">
             <p className="text-slate-400">Henüz vitrinde ürün bulunmuyor.</p>
           </div>
         ) : (
           <div className="space-y-20">
-            {/* 🌌 SAAS ÜRÜNLERİ BÖLÜMÜ */}
+            {/* 🌌 SAAS ÜRÜNLERİ */}
             {saasProducts.length > 0 && (
               <div>
                 <h2 className="mb-8 font-display text-2xl font-semibold text-white border-l-2 border-nexa-electric pl-3">
@@ -74,7 +75,6 @@ export default async function UrunlerPage() {
                             {product.title}
                           </h3>
 
-                          {/* İndirim Duyarlı Fiyat Alanı */}
                           <div className="mt-4 flex items-baseline text-white">
                             {hasDiscount ? (
                               <div className="flex flex-col">
@@ -155,7 +155,7 @@ export default async function UrunlerPage() {
               </div>
             )}
 
-            {/* 💼 AJANS HİZMETLERİ BÖLÜMÜ */}
+            {/* 💼 AJANS HİZMETLERİ */}
             {serviceProducts.length > 0 && (
               <div>
                 <h2 className="mb-8 font-display text-2xl font-semibold text-white border-l-2 border-purple-500 pl-3">
@@ -178,7 +178,6 @@ export default async function UrunlerPage() {
                             {product.title}
                           </h3>
 
-                          {/* İndirim Duyarlı Fiyat Alanı (Hizmet için) */}
                           <div className="mt-4 flex items-baseline text-white">
                             {hasDiscount ? (
                               <div className="flex flex-col">
