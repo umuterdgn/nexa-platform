@@ -17,9 +17,11 @@ export async function GET(req: Request) {
     // 2. URL'den hangi aboneliğe gitmek istediğini al (Örn: /api/sso?subId=123)
     const url = new URL(req.url);
     const subId = url.searchParams.get("subId");
-    
+
     if (!subId) {
-      return NextResponse.redirect(new URL("/profil?error=eksik-parametre", req.url));
+      return NextResponse.redirect(
+        new URL("/profil?error=eksik-parametre", req.url),
+      );
     }
 
     await connectMongoDB();
@@ -33,31 +35,36 @@ export async function GET(req: Request) {
     }).populate("productId");
 
     if (!subscription || !subscription.productId) {
-      return NextResponse.redirect(new URL("/profil?error=yetkisiz-erisim", req.url));
+      return NextResponse.redirect(
+        new URL("/profil?error=yetkisiz-erisim", req.url),
+      );
     }
 
+    // 🔥 TİP HATASINI ÇÖZEN SATIR:
+    // populate() ile gelen veriyi TypeScript'e tanıtmak için as any yapıyoruz
+    const product = subscription.productId as any;
+
     // 4. Şifreli Biletin (JWT) İçeriğini Hazırla
-    // Bu bilgileri diğer SaaS uygulaman okuyup müşteriyi içeri alacak
     const payload = {
       nexaUserId: session.user.id,
       email: session.user.email,
       name: session.user.name,
-      productType: subscription.productId.type,
-      productSlug: subscription.productId.slug,
-      exp: Math.floor(Date.now() / 1000) + (60 * 5), // Bilet sadece 5 dakika geçerli!
+      productType: product.type, // Artık TypeScript itiraz etmeyecek
+      productSlug: product.slug, // Artık TypeScript itiraz etmeyecek
+      exp: Math.floor(Date.now() / 1000) + 60 * 5, // Bilet sadece 5 dakika geçerli!
     };
 
     // 5. Bileti Kilitle (Bu şifre .env.local dosyasında olmalı)
-    const secretKey = process.env.SSO_SECRET_KEY || "nexa-cok-gizli-sso-anahtari-2026";
+    const secretKey =
+      process.env.SSO_SECRET_KEY || "nexa-cok-gizli-sso-anahtari-2026";
     const token = jwt.sign(payload, secretKey);
 
     // 6. Hedef SaaS Uygulamasının Adresini Belirle
-    // Ürünün slug'ına göre farklı sitelere yönlendirebilirsin
     let targetAppUrl = "";
-    
-    if (subscription.productId.slug === "randevu-sistemi") {
+
+    if (product.slug === "randevu-sistemi") {
       targetAppUrl = `https://randevu.nxa.online/api/auth/nexa-login?token=${token}`;
-    } else if (subscription.productId.slug === "next-finance-erp") {
+    } else if (product.slug === "next-finance-erp") {
       targetAppUrl = `https://erp.nxa.online/api/auth/nexa-login?token=${token}`;
     } else {
       // Varsayılan veya test adresi
@@ -66,9 +73,10 @@ export async function GET(req: Request) {
 
     // 7. Müşteriyi şifreli biletiyle birlikte diğer SaaS uygulamasına fırlat
     return NextResponse.redirect(targetAppUrl, 302);
-
   } catch (error) {
     console.error("SSO Üretim Hatası:", error);
-    return NextResponse.redirect(new URL("/profil?error=sunucu-hatasi", req.url));
+    return NextResponse.redirect(
+      new URL("/profil?error=sunucu-hatasi", req.url),
+    );
   }
 }
