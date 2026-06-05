@@ -12,7 +12,8 @@ import {
 } from "@/models/Subscription";
 import { ActiveProductCard } from "@/components/dashboard/ActiveProductCard";
 import { getProductIcon } from "@/lib/product-icons";
-import { Product, type IProductDocument } from "@/models/Product";type PopulatedSubscription = ISubscriptionDocument & {
+import { Product, type IProductDocument } from "@/models/Product";
+type PopulatedSubscription = ISubscriptionDocument & {
   productId: IProductDocument;
 };
 
@@ -113,7 +114,8 @@ export default async function ProfilPage({
                     name={product.title}
                     daysRemaining={daysRemaining}
                     totalDays={totalDays || 30}
-                    panelUrl="#"
+                    // 🔥 İşte Sihirli Dokunuş:
+                    panelUrl={`/api/sso?subId=${sub._id.toString()}`}
                     icon={getProductIcon(product.slug)}
                   />
                 );
