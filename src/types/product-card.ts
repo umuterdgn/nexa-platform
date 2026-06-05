@@ -1,5 +1,4 @@
-import type { ProductType } from "@/models/Product";
-
+export type ProductType = "saas" | "service";
 export interface ProductCardData {
   slug: string;
   title: string;
