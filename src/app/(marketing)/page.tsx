@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { ArrowRight, Sparkles, Zap, Shield, Globe } from "lucide-react";
 
+export const dynamic = "force-dynamic";
+
 const features = [
   {
     icon: Zap,

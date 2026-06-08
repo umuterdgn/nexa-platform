@@ -10,6 +10,7 @@ import {
   type ISubscriptionDocument,
 } from "@/models/Subscription";
 import { ActiveProductCard } from "@/components/dashboard/ActiveProductCard";
+import { PaymentActivationBanner } from "@/components/dashboard/PaymentActivationBanner";
 import { getProductIcon } from "@/lib/product-icons";
 import { Product, type IProductDocument } from "@/models/Product";
 
@@ -67,11 +68,7 @@ export default async function ProfilPage({
       </header>
 
       <main className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16">
-        {odeme === "basarili" && (
-          <div className="mb-8 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-400">
-            Ödemeniz başarıyla tamamlandı. Aboneliğiniz aktif edildi.
-          </div>
-        )}
+        {odeme === "basarili" && <PaymentActivationBanner />}
 
         <div className="mb-10">
           <p className="text-sm font-medium uppercase tracking-widest text-[#3B82F6]">
@@ -117,7 +114,7 @@ export default async function ProfilPage({
                     name={product.title}
                     daysRemaining={daysRemaining}
                     totalDays={totalDays || 30}
-                    panelUrl={`/api/sso?subId=${String(sub._id)}`}
+                    panelUrl={`/sso?subId=${String(sub._id)}`}
                     icon={getProductIcon(product.slug)}
                   />
                 );

@@ -101,10 +101,13 @@ export function ServiceListClient({
     };
 
     try {
-      const res = await fetch("/api/admin/products", {
+      const res = await fetch("/api/services", {
         method: editingService ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          ...payload,
+          id: editingService?._id ?? null,
+        }),
       });
 
       if (res.ok) {
@@ -129,7 +132,7 @@ export function ServiceListClient({
 
     setDeletingId(id);
     try {
-      const res = await fetch(`/api/admin/products?id=${id}`, {
+      const res = await fetch(`/api/services?id=${id}`, {
         method: "DELETE",
       });
 
