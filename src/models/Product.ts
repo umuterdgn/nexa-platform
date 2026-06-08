@@ -7,7 +7,7 @@ export interface IProductDocument {
   price: number;
   discountPrice?: number; // İndirim alanı
   type: "saas" | "service";
-  durationDays?: number;  // Süre alanı (30 / 365)
+  durationDays?: number; // Süre alanı (30 / 365)
   salesCount?: number;
   requiredFields?: string[];
   features?: string[];
@@ -27,9 +27,16 @@ const ProductSchema = new Schema<IProductDocument>(
     salesCount: { type: Number, default: 0 },
     requiredFields: { type: [String], default: [] },
     features: { type: [String], default: [] },
+    businessId: {
+      type: Schema.Types.ObjectId,
+      ref: "Business", // Eğer Business diye bir modelin varsa referans verir, yoksa sadece ID tutar
+      required: true,
+      index: true, // Veritabanında binlerce ürün olunca aramayı hızlandırır
+    },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // Named export yapımızı koruyoruz
-export const Product = models.Product || model<IProductDocument>("Product", ProductSchema);
+export const Product =
+  models.Product || model<IProductDocument>("Product", ProductSchema);

@@ -6,7 +6,6 @@ import { Navbar } from "@/components/layout/Navbar";
 export const dynamic = "force-dynamic";
 
 export default async function UrunlerPage() {
-  // 🔥 İŞTE ÇÖZÜM BURADA: Tüm değişkenler tipleriyle birlikte en baştan tanımlanıyor.
   let products: any[] = [];
   let saasProducts: any[] = [];
   let serviceProducts: any[] = [];
