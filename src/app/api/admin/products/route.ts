@@ -33,6 +33,15 @@ function buildProductPayload(body: Record<string, unknown>, businessId: string) 
       monthly: body.pricingMonthly ? Number(body.pricingMonthly) : undefined,
       yearly: body.pricingYearly ? Number(body.pricingYearly) : undefined,
       oneTime: body.pricingOneTime ? Number(body.pricingOneTime) : undefined,
+      discountMonthly: body.discountMonthly
+        ? Number(body.discountMonthly)
+        : undefined,
+      discountYearly: body.discountYearly
+        ? Number(body.discountYearly)
+        : undefined,
+      discountOneTime: body.discountOneTime
+        ? Number(body.discountOneTime)
+        : undefined,
       currency: (body.currency as "TRY" | "USD" | "EUR") ?? "TRY",
     },
   });

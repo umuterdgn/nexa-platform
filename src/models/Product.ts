@@ -5,6 +5,9 @@ export interface IProductPricing {
   monthly?: number;
   yearly?: number;
   oneTime?: number;
+  discountMonthly?: number;
+  discountYearly?: number;
+  discountOneTime?: number;
   currency: "TRY" | "USD" | "EUR";
 }
 
@@ -40,6 +43,9 @@ const PricingSchema = new Schema<IProductPricing>(
     monthly: { type: Number },
     yearly: { type: Number },
     oneTime: { type: Number },
+    discountMonthly: { type: Number },
+    discountYearly: { type: Number },
+    discountOneTime: { type: Number },
     currency: {
       type: String,
       enum: ["TRY", "USD", "EUR"],

@@ -6,6 +6,10 @@ export interface ProductPricing {
   monthly?: number;
   yearly?: number;
   oneTime?: number;
+  /** Döngü bazlı indirimli fiyatlar */
+  discountMonthly?: number;
+  discountYearly?: number;
+  discountOneTime?: number;
   currency: "TRY" | "USD" | "EUR";
 }
 

@@ -5,6 +5,25 @@ type ProductLike = Pick<
   "type" | "price" | "discountPrice" | "pricing" | "durationDays"
 >;
 
+export function getListPrice(
+  product: ProductLike,
+  cycle: BillingCycle = "monthly",
+): number {
+  const pricing = product.pricing;
+  if (pricing) {
+    if (cycle === "monthly" && pricing.monthly != null) return pricing.monthly;
+    if (cycle === "yearly" && pricing.yearly != null) return pricing.yearly;
+    if (cycle === "one_time" && pricing.oneTime != null) return pricing.oneTime;
+    if (product.type === "service" && pricing.oneTime != null) {
+      return pricing.oneTime;
+    }
+    if (pricing.monthly != null) return pricing.monthly;
+    if (pricing.yearly != null) return pricing.yearly;
+    if (pricing.oneTime != null) return pricing.oneTime;
+  }
+  return product.price ?? 0;
+}
+
 export function getEffectivePrice(
   product: ProductLike,
   cycle: BillingCycle = "monthly",
@@ -12,6 +31,9 @@ export function getEffectivePrice(
   const pricing = product.pricing;
 
   if (pricing) {
+    const discounted = resolveDiscountFromPricing(pricing, cycle);
+    if (discounted != null) return discounted;
+
     const fromPricing = resolvePriceFromPricing(pricing, cycle, product.type);
     if (fromPricing != null) return fromPricing;
   }
@@ -25,6 +47,37 @@ export function getEffectivePrice(
     return product.discountPrice;
   }
   return base;
+}
+
+export function hasDiscount(
+  product: ProductLike,
+  cycle: BillingCycle = "monthly",
+): boolean {
+  const list = getListPrice(product, cycle);
+  const effective = getEffectivePrice(product, cycle);
+  return effective > 0 && effective < list;
+}
+
+function resolveDiscountFromPricing(
+  pricing: ProductPricing,
+  cycle: BillingCycle,
+): number | null {
+  const discountKey =
+    cycle === "monthly"
+      ? "discountMonthly"
+      : cycle === "yearly"
+        ? "discountYearly"
+        : "discountOneTime";
+  const listKey =
+    cycle === "monthly" ? "monthly" : cycle === "yearly" ? "yearly" : "oneTime";
+
+  const discount = pricing[discountKey];
+  const list = pricing[listKey as keyof ProductPricing] as number | undefined;
+
+  if (discount != null && discount > 0 && (list == null || discount < list)) {
+    return discount;
+  }
+  return null;
 }
 
 function resolvePriceFromPricing(
@@ -80,13 +133,12 @@ export function buildPricingFromLegacy(input: {
   type?: IProduct["type"];
   pricing?: Partial<ProductPricing>;
 }): ProductPricing {
-  const effective =
+  const listPrice = input.price ?? 0;
+  const hasLegacyDiscount =
     input.discountPrice != null &&
     input.discountPrice > 0 &&
-    input.price != null &&
-    input.discountPrice < input.price
-      ? input.discountPrice
-      : (input.price ?? 0);
+    listPrice > 0 &&
+    input.discountPrice < listPrice;
 
   const base: ProductPricing = {
     currency: input.pricing?.currency ?? "TRY",
@@ -94,9 +146,17 @@ export function buildPricingFromLegacy(input: {
   };
 
   if (input.type === "service") {
-    base.oneTime = base.oneTime ?? effective;
+    base.oneTime = base.oneTime ?? listPrice;
+    if (hasLegacyDiscount && base.discountOneTime == null) {
+      base.discountOneTime = input.discountPrice;
+    }
   } else {
-    base.monthly = base.monthly ?? effective;
+    if (base.monthly == null && base.yearly == null) {
+      base.monthly = listPrice;
+    }
+    if (hasLegacyDiscount && base.discountMonthly == null) {
+      base.discountMonthly = input.discountPrice;
+    }
   }
 
   return base;

@@ -4,7 +4,9 @@ import { Product } from "@/models/Product";
 import {
   getDefaultBillingCycle,
   getEffectivePrice,
+  getListPrice,
   getCycleLabel,
+  hasDiscount,
 } from "@/lib/product-pricing";
 import type { IProduct } from "@/types/product";
 
@@ -22,6 +24,8 @@ function ProductCard({
   const productId = product._id.toString();
   const cycle = getDefaultBillingCycle(product);
   const displayPrice = getEffectivePrice(product, cycle);
+  const listPrice = getListPrice(product, cycle);
+  const showDiscount = hasDiscount(product, cycle);
   const cycleLabel = getCycleLabel(cycle, product.type);
   const features = product.features ?? [];
 
@@ -52,17 +56,37 @@ function ProductCard({
         </h3>
 
         <div className="mt-4 flex items-baseline text-white">
-          <span className="text-3xl font-bold tracking-tight">
-            ₺{displayPrice.toLocaleString("tr-TR")}
-          </span>
-          {cycleLabel && (
-            <span className="ml-1 text-sm font-semibold text-slate-400">
-              {cycleLabel}
-            </span>
+          {showDiscount ? (
+            <div className="flex flex-col">
+              <span className="text-xs text-slate-500 line-through font-mono">
+                ₺{listPrice.toLocaleString("tr-TR")}
+              </span>
+              <div className="flex items-baseline">
+                <span className="text-3xl font-bold tracking-tight text-emerald-400">
+                  ₺{displayPrice.toLocaleString("tr-TR")}
+                </span>
+                {cycleLabel && (
+                  <span className="ml-1 text-sm font-semibold text-slate-400">
+                    {cycleLabel}
+                  </span>
+                )}
+              </div>
+            </div>
+          ) : (
+            <>
+              <span className="text-3xl font-bold tracking-tight">
+                ₺{displayPrice.toLocaleString("tr-TR")}
+              </span>
+              {cycleLabel && (
+                <span className="ml-1 text-sm font-semibold text-slate-400">
+                  {cycleLabel}
+                </span>
+              )}
+            </>
           )}
         </div>
 
-        {variant === "saas" && product.pricing?.yearly != null && (
+        {variant === "saas" && product.pricing?.yearly != null && cycle === "monthly" && (
           <p className="mt-1 text-xs text-slate-500">
             Yıllık: ₺{product.pricing.yearly.toLocaleString("tr-TR")}
           </p>
