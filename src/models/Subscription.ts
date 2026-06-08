@@ -6,17 +6,25 @@ import mongoose, {
   type Model,
   type Types,
 } from "mongoose";
+import type { BillingCycle } from "@/types/product";
 
-// 🔥 1. "pending_payment" statüsü eklendi
-export type SubscriptionStatus = "active" | "passive" | "pending_payment";
+export type SubscriptionStatus =
+  | "active"
+  | "passive"
+  | "pending_payment"
+  | "expired"
+  | "cancelled";
 
 export interface ISubscription {
   userId: Types.ObjectId;
   productId: Types.ObjectId;
   status: SubscriptionStatus;
+  billingCycle?: BillingCycle;
   startDate: Date;
   endDate: Date;
-  merchantOid?: string; // 🔥 2. PayTR sipariş kodu için alan eklendi
+  merchantOid?: string;
+  invoiceSent: boolean;
+  autoRenew?: boolean;
 }
 
 export interface ISubscriptionDocument extends ISubscription, Document {}
@@ -49,22 +57,25 @@ const SubscriptionSchema = new Schema<ISubscriptionDocument>(
       index: true,
     },
     productId: { type: Schema.Types.ObjectId, ref: "Product", required: true },
-    // 🔥 3. Enum listesi güncellendi
     status: {
       type: String,
-      enum: ["active", "passive", "pending_payment"],
+      enum: ["active", "passive", "pending_payment", "expired", "cancelled"],
       default: "passive",
+    },
+    billingCycle: {
+      type: String,
+      enum: ["monthly", "yearly", "one_time"],
     },
     startDate: { type: Date, required: true },
     endDate: { type: Date, required: true },
-    // 🔥 4. Şemaya PayTR kodu eklendi
     merchantOid: { type: String, required: false },
+    invoiceSent: { type: Boolean, default: false },
+    autoRenew: { type: Boolean, default: false },
   },
   { timestamps: true },
 );
 
 SubscriptionSchema.index({ userId: 1, status: 1 });
-// 🔥 Webhook'un siparişi anında bulabilmesi için özel index eklendi
 SubscriptionSchema.index({ merchantOid: 1 });
 
 export const Subscription: Model<ISubscriptionDocument> =

@@ -3,16 +3,19 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { authOptions } from "@/lib/auth";
 import { connectMongoDB } from "@/lib/mongodb";
-import User from "@/models/User";
-// Diğer importların hemen altına ekle:
 import { UserMenu } from "@/components/dashboard/UserMenu";
 import {
   getDaysRemaining,
+  Subscription,
   type ISubscriptionDocument,
 } from "@/models/Subscription";
 import { ActiveProductCard } from "@/components/dashboard/ActiveProductCard";
 import { getProductIcon } from "@/lib/product-icons";
 import { Product, type IProductDocument } from "@/models/Product";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 type PopulatedSubscription = ISubscriptionDocument & {
   productId: IProductDocument;
 };
@@ -32,17 +35,18 @@ export default async function ProfilPage({
   await connectMongoDB();
 
   const _forceRegisterProductSchema = Product.modelName;
+  const _forceRegisterSubscriptionSchema = Subscription.modelName;
 
-  const user = await User.findById(session.user.id).populate<{
-    subscriptions: PopulatedSubscription[];
-  }>({
-    path: "subscriptions",
-    populate: { path: "productId" },
-  });
+  const subs = (await Subscription.find({ userId: session.user.id })
+    .populate<{ productId: IProductDocument }>("productId")
+    .sort({ updatedAt: -1 })
+    .lean()) as unknown as PopulatedSubscription[];
 
-  const subs = (user?.subscriptions ?? []) as PopulatedSubscription[];
   const activeSubs = subs.filter(
-    (s) => s.status === "active" && s.productId && getDaysRemaining(s) > 0,
+    (s) =>
+      s.status === "active" &&
+      s.productId &&
+      getDaysRemaining(s) > 0,
   );
 
   return (
@@ -53,7 +57,6 @@ export default async function ProfilPage({
             <span className="text-gradient-nexa">Nexa</span>
           </Link>
 
-          {/* Burayı bu şekilde güncelliyoruz */}
           <div className="flex items-center gap-4">
             <span className="hidden text-sm text-slate-400 sm:inline">
               {session.user.name ?? session.user.email}
@@ -110,12 +113,11 @@ export default async function ProfilPage({
 
                 return (
                   <ActiveProductCard
-                    key={sub._id.toString()}
+                    key={String(sub._id)}
                     name={product.title}
                     daysRemaining={daysRemaining}
                     totalDays={totalDays || 30}
-                    // 🔥 İşte Sihirli Dokunuş:
-                    panelUrl={`/api/sso?subId=${sub._id.toString()}`}
+                    panelUrl={`/api/sso?subId=${String(sub._id)}`}
                     icon={getProductIcon(product.slug)}
                   />
                 );

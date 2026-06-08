@@ -147,14 +147,18 @@ export function ProductListClient({ initialProducts }: { initialProducts: any[] 
                   )}
                 </td>
                 <td className="py-4 px-6">
-                  {product.discountPrice > 0 ? (
-                    <div>
-                      <span className="line-through text-xs text-slate-500 mr-2">₺{product.price}</span>
-                      <span className="text-sm font-semibold text-emerald-400">₺{product.discountPrice}</span>
-                    </div>
-                  ) : (
-                    <span className="text-sm font-semibold text-slate-200">₺{product.price}</span>
-                  )}
+                  {(() => {
+                    const display = product.pricing?.monthly ?? product.pricing?.oneTime ?? product.price ?? 0;
+                    const discounted = product.discountPrice > 0 && product.discountPrice < (product.price ?? 0);
+                    return discounted ? (
+                      <div>
+                        <span className="line-through text-xs text-slate-500 mr-2">₺{product.price}</span>
+                        <span className="text-sm font-semibold text-emerald-400">₺{product.discountPrice}</span>
+                      </div>
+                    ) : (
+                      <span className="text-sm font-semibold text-slate-200">₺{display}</span>
+                    );
+                  })()}
                 </td>
                 <td className="py-4 px-6 text-center">
                   <span className="bg-nexa-electric/10 text-nexa-electric-bright text-xs px-2.5 py-1 rounded-full font-bold border border-nexa-electric/20">

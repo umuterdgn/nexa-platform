@@ -1,42 +1,92 @@
 import mongoose, { Schema, model, models } from "mongoose";
+import type { BillingCycle, ProductType } from "@/types/product";
+
+export interface IProductPricing {
+  monthly?: number;
+  yearly?: number;
+  oneTime?: number;
+  currency: "TRY" | "USD" | "EUR";
+}
+
+export interface IProductUsageQuotas {
+  maxUsers?: number;
+  maxTransactions?: number;
+}
 
 export interface IProductDocument {
   title: string;
   slug: string;
   description: string;
-  price: number;
-  discountPrice?: number; // İndirim alanı
-  type: "saas" | "service";
-  durationDays?: number; // Süre alanı (30 / 365)
+  type: ProductType;
+  businessId: mongoose.Types.ObjectId;
+  panelUrl?: string;
+  features?: string[];
+  pricing: IProductPricing;
+  /** Geriye dönük uyumluluk */
+  price?: number;
+  discountPrice?: number;
+  durationDays?: number;
   salesCount?: number;
   requiredFields?: string[];
-  features?: string[];
+  usageQuotas?: IProductUsageQuotas;
+  isActive?: boolean;
+  sortOrder?: number;
   createdAt: Date;
   updatedAt: Date;
 }
+
+const PricingSchema = new Schema<IProductPricing>(
+  {
+    monthly: { type: Number },
+    yearly: { type: Number },
+    oneTime: { type: Number },
+    currency: {
+      type: String,
+      enum: ["TRY", "USD", "EUR"],
+      default: "TRY",
+    },
+  },
+  { _id: false },
+);
+
+const UsageQuotasSchema = new Schema<IProductUsageQuotas>(
+  {
+    maxUsers: { type: Number },
+    maxTransactions: { type: Number },
+  },
+  { _id: false },
+);
 
 const ProductSchema = new Schema<IProductDocument>(
   {
     title: { type: String, required: true },
     slug: { type: String, required: true, unique: true },
     description: { type: String, required: true },
-    price: { type: Number, required: true },
-    discountPrice: { type: Number, default: 0 }, // Şemaya zorunlu ekleme
     type: { type: String, enum: ["saas", "service"], required: true },
-    durationDays: { type: Number, default: 30 }, // Şemaya zorunlu ekleme
-    salesCount: { type: Number, default: 0 },
-    requiredFields: { type: [String], default: [] },
-    features: { type: [String], default: [] },
     businessId: {
       type: Schema.Types.ObjectId,
-      ref: "Business", // Eğer Business diye bir modelin varsa referans verir, yoksa sadece ID tutar
+      ref: "Business",
       required: true,
-      index: true, // Veritabanında binlerce ürün olunca aramayı hızlandırır
+      index: true,
     },
+    panelUrl: { type: String },
+    features: { type: [String], default: [] },
+    pricing: { type: PricingSchema, default: () => ({ currency: "TRY" }) },
+    price: { type: Number },
+    discountPrice: { type: Number, default: 0 },
+    durationDays: { type: Number, default: 30 },
+    salesCount: { type: Number, default: 0 },
+    requiredFields: { type: [String], default: [] },
+    usageQuotas: { type: UsageQuotasSchema, default: {} },
+    isActive: { type: Boolean, default: true },
+    sortOrder: { type: Number, default: 0 },
   },
   { timestamps: true },
 );
 
-// Named export yapımızı koruyoruz
+ProductSchema.index({ type: 1, isActive: 1 });
+
+export type { BillingCycle };
+
 export const Product =
   models.Product || model<IProductDocument>("Product", ProductSchema);

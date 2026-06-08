@@ -2,14 +2,24 @@
 
 import { useState, useEffect } from "react";
 import { ShieldCheck, Loader2 } from "lucide-react";
+import type { BillingCycle } from "@/types/product";
+import { getCycleLabel } from "@/lib/product-pricing";
 
-export function CheckoutClient({ product }: { product: any }) {
+interface CheckoutProduct {
+  id: string;
+  title: string;
+  description: string;
+  type: "saas" | "service";
+  activePrice: number;
+  billingCycle: BillingCycle;
+}
+
+export function CheckoutClient({ product }: { product: CheckoutProduct }) {
   const [loading, setLoading] = useState(false);
   const [paytrToken, setPaytrToken] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const activePrice =
-    product.discountPrice > 0 ? product.discountPrice : product.price;
+  const cycleLabel = getCycleLabel(product.billingCycle, product.type);
 
   const handlePaymentStart = async () => {
     setLoading(true);
@@ -19,7 +29,10 @@ export function CheckoutClient({ product }: { product: any }) {
       const res = await fetch("/api/payment/paytr", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ productId: product.id }),
+        body: JSON.stringify({
+          productId: product.id,
+          billingCycle: product.billingCycle,
+        }),
       });
 
       const data = await res.json();
@@ -29,7 +42,7 @@ export function CheckoutClient({ product }: { product: any }) {
       } else {
         setError(data.error || "Ödeme başlatılamadı. Lütfen tekrar deneyin.");
       }
-    } catch (err) {
+    } catch {
       setError("Bağlantı hatası oluştu.");
     } finally {
       setLoading(false);
@@ -58,7 +71,6 @@ export function CheckoutClient({ product }: { product: any }) {
   return (
     <div className="w-full max-w-4xl">
       {paytrToken ? (
-        /* 💳 PAYTR EKRANI AÇILDIĞINDA GÖRÜNECEK KISIM */
         <div className="rounded-2xl bg-white p-2 w-full overflow-hidden shadow-[0_0_30px_rgba(59,130,246,0.2)] transition-all duration-500">
           <iframe
             src={`https://www.paytr.com/odeme/guvenli/${paytrToken}`}
@@ -69,9 +81,7 @@ export function CheckoutClient({ product }: { product: any }) {
           />
         </div>
       ) : (
-        /* 🛒 SİPARİŞ ÖZETİ VE ÖDEME BUTONU EKRANI (Senin Tasarımın) */
         <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
-          {/* SOL: Özet Kartı */}
           <div className="h-fit rounded-2xl border border-white/10 bg-nexa-anthracite/40 p-8">
             <h2 className="mb-6 tracking-widest text-sm font-semibold uppercase text-nexa-electric-bright">
               Sipariş Özeti
@@ -86,14 +96,13 @@ export function CheckoutClient({ product }: { product: any }) {
             </div>
 
             <div className="mt-6 flex items-end justify-between border-t border-white/10 pt-4">
-              <span className="text-slate-400">Toplam Tutar:</span>
+              <span className="text-slate-400">Toplam Tutar{cycleLabel}:</span>
               <span className="text-3xl font-bold text-emerald-400">
-                ₺{activePrice.toLocaleString("tr-TR")}
+                ₺{product.activePrice.toLocaleString("tr-TR")}
               </span>
             </div>
           </div>
 
-          {/* SAĞ: PayTR Bağlantı Kartı */}
           <div className="rounded-2xl border border-nexa-electric/30 bg-nexa-anthracite/80 p-8 shadow-[0_0_30px_rgba(59,130,246,0.1)] flex flex-col justify-center">
             <h2 className="mb-6 flex items-center gap-2 text-xl font-bold">
               💳 Güvenli Ödeme

@@ -25,6 +25,7 @@ export default async function AdminLayout({
   const menuItems = [
     { href: "/admin", label: "Genel Bakış (İstatistik)", icon: <BarChart3 size={18} /> },
     { href: "/admin/urunler", label: "Ürünler & Fiyatlandırma", icon: <ShoppingBag size={18} /> },
+    { href: "/admin/hizmetler", label: "Hizmetler (CMS)", icon: <Settings size={18} /> },
     { href: "/admin/musteriler", label: "Müşteri Yönetimi", icon: <Users2 size={18} /> },
   ];
 

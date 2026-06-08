@@ -3,9 +3,9 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { connectMongoDB } from "@/lib/mongodb";
 import { Product } from "@/models/Product";
+import { buildPricingFromLegacy } from "@/lib/product-pricing";
 
-// 🚀 GET: İşletmenin SADECE KENDİ ürünlerini listeleme
-export async function GET(req: Request) {
+export async function GET() {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) {
@@ -14,12 +14,9 @@ export async function GET(req: Request) {
 
     await connectMongoDB();
 
-    // 🔥 Çok Kiracılı İzolasyon (Multi-tenant):
-    // Kullanıcının businessId'si yoksa, kendi ID'sini işletme ID'si olarak kabul ediyoruz (Bireysel kullanım için)
     const currentBusinessId =
-      (session.user as any).businessId || session.user.id;
+      (session.user as { businessId?: string }).businessId ?? session.user.id;
 
-    // Sadece bu işletmeye ait ürünleri, en yeniler en üstte olacak şekilde getir
     const products = await Product.find({ businessId: currentBusinessId }).sort(
       { createdAt: -1 },
     );
@@ -31,7 +28,6 @@ export async function GET(req: Request) {
   }
 }
 
-// 🚀 POST: İşletme adına YENİ ürün oluşturma
 export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions);
@@ -42,8 +38,7 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { title, description, price, discountPrice, type } = body;
 
-    // Gerekli alanların kontrolü
-    if (!title || !price || !type) {
+    if (!title || price == null || !type) {
       return NextResponse.json(
         { error: "Başlık, fiyat ve tür alanları zorunludur" },
         { status: 400 },
@@ -52,15 +47,21 @@ export async function POST(req: Request) {
 
     await connectMongoDB();
 
-    // 🔥 İşletme mühürünü hazırlıyoruz
     const currentBusinessId =
-      (session.user as any).businessId || session.user.id;
+      (session.user as { businessId?: string }).businessId ?? session.user.id;
 
-    // Yeni ürünü veritabanına işletme mühürüyle birlikte kaydet
+    const pricing = buildPricingFromLegacy({
+      price: Number(price),
+      discountPrice: discountPrice ? Number(discountPrice) : 0,
+      type,
+    });
+
     const newProduct = await Product.create({
       businessId: currentBusinessId,
       title,
-      description,
+      slug: title.toLowerCase().replace(/\s+/g, "-"),
+      description: description ?? "",
+      pricing,
       price: Number(price),
       discountPrice: discountPrice ? Number(discountPrice) : 0,
       type,

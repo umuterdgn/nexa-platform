@@ -5,6 +5,10 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { CheckoutClient } from "./CheckoutClient";
 import { Navbar } from "@/components/layout/Navbar";
+import {
+  getDefaultBillingCycle,
+  getEffectivePrice,
+} from "@/lib/product-pricing";
 
 export const dynamic = "force-dynamic";
 
@@ -44,12 +48,17 @@ export default async function CheckoutPage({
     );
   }
 
+  const billingCycle = getDefaultBillingCycle(product);
+  const activePrice = getEffectivePrice(product, billingCycle);
+
   const serializedProduct = {
     id: product._id.toString(),
     title: product.title,
     description: product.description,
-    price: product.price,
-    discountPrice: product.discountPrice,
+    type: product.type,
+    activePrice,
+    billingCycle,
+    pricing: product.pricing,
   };
 
   return (
