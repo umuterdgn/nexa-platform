@@ -209,14 +209,17 @@ export async function POST(req: Request) {
           });
         }
 
-        // Faturayı Gönder!
-        // PayTR'ı bekletmemek için await'siz çağırıyoruz (Fire and forget)
-        sendPaymentReceipt(
-          subscription,
-          product,
-          total_amount,
-          merchant_oid,
-        ).catch(console.error);
+        // 🌟 KESİN ÇÖZÜM: Vercel Serverless ortamında asenkron işlemlerin yarıda kesilmemesi için await kullanıyoruz!
+        try {
+          await sendPaymentReceipt(
+            subscription,
+            product,
+            total_amount,
+            merchant_oid,
+          );
+        } catch (emailError) {
+          console.error("Dekont e-postası gönderilemedi:", emailError);
+        }
 
         revalidatePath("/profil");
         revalidatePath("/urunler");
