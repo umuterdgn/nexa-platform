@@ -99,7 +99,7 @@ export default async function HizmetlerPage() {
                   )}
 
                   <Link
-                    href={`/checkout/${service._id.toString()}`}
+                    href="/teklif-al"
                     className="mt-6 inline-flex items-center justify-center gap-2 rounded-xl bg-purple-600 py-3 text-sm font-semibold text-white transition hover:bg-purple-500"
                   >
                     Teklif Al
