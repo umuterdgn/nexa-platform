@@ -10,6 +10,8 @@ export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") ?? "/profil";
+  const verified = searchParams.get("verified");
+  const verifyError = searchParams.get("error");
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -30,6 +32,12 @@ export function LoginForm() {
     setLoading(false);
 
     if (res?.error) {
+      if (res.error === "EMAIL_NOT_VERIFIED") {
+        setError(
+          "E-posta adresiniz henüz doğrulanmamış. Lütfen gelen kutunuzu kontrol edin.",
+        );
+        return;
+      }
       setError("E-posta veya şifre hatalı.");
       return;
     }
@@ -52,6 +60,26 @@ export function LoginForm() {
       }
     >
       <form onSubmit={handleSubmit} className="space-y-4">
+        {verified === "1" && (
+          <p className="rounded-lg bg-emerald-500/10 px-3 py-2 text-sm text-emerald-400">
+            E-posta adresiniz doğrulandı. Giriş yapabilirsiniz.
+          </p>
+        )}
+        {verifyError === "invalid_token" && (
+          <p className="rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-400">
+            Doğrulama bağlantısı geçersiz veya süresi dolmuş.
+          </p>
+        )}
+        {verifyError === "verification_failed" && (
+          <p className="rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-400">
+            Doğrulama sırasında bir hata oluştu. Lütfen tekrar deneyin.
+          </p>
+        )}
+        {searchParams.get("reset") === "1" && (
+          <p className="rounded-lg bg-emerald-500/10 px-3 py-2 text-sm text-emerald-400">
+            Şifreniz güncellendi. Giriş yapabilirsiniz.
+          </p>
+        )}
         <AuthInput
           label="E-posta"
           type="email"
@@ -70,6 +98,14 @@ export function LoginForm() {
           required
           autoComplete="current-password"
         />
+        <div className="text-right">
+          <Link
+            href="/auth/forgot-password"
+            className="text-xs text-[#3B82F6] hover:underline"
+          >
+            Şifremi unuttum
+          </Link>
+        </div>
         {error && (
           <p className="rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-400">
             {error}

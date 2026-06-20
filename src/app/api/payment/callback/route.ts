@@ -4,8 +4,154 @@ import { connectMongoDB } from "@/lib/mongodb";
 import { Subscription } from "@/models/Subscription";
 import { Product } from "@/models/Product";
 import User from "@/models/User";
-import { getDurationDaysForCycle } from "@/lib/product-pricing";
+import {
+  getDurationDaysForCycle,
+  getEffectivePrice,
+} from "@/lib/product-pricing";
 import crypto from "crypto";
+import { Resend } from "resend";
+import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
+
+// Resend API'yi başlatıyoruz
+const resend = new Resend(process.env.RESEND_API_KEY);
+
+async function sendPaymentReceipt(
+  subscription: InstanceType<typeof Subscription>,
+  product: InstanceType<typeof Product> | null,
+  totalAmountKurus: string,
+  merchantOid: string,
+) {
+  if (subscription.invoiceSent) return;
+
+  const user = await User.findById(subscription.userId);
+  if (!user?.email) return;
+
+  const billingCycle = subscription.billingCycle ?? "monthly";
+  const amount =
+    product != null
+      ? getEffectivePrice(product, billingCycle)
+      : Number(totalAmountKurus) / 100;
+
+  const currency = product?.pricing?.currency ?? "TRY";
+  const paymentDate = new Date();
+  const productName = product?.title ?? "Nexa Hizmeti";
+  const customerName = user.name || user.email;
+
+  try {
+    // 1. PDF-LIB İLE DİNAMİK DEKONT ÇİZİMİ
+    const pdfDoc = await PDFDocument.create();
+    const page = pdfDoc.addPage([595.28, 841.89]); // A4 Boyutu
+    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+
+    // Başlık ve Logo Alanı
+    page.drawText("Nexa.", {
+      x: 50,
+      y: 750,
+      size: 36,
+      font: boldFont,
+      color: rgb(0.14, 0.38, 0.92),
+    });
+    page.drawText("DIJITAL DONUSUM PLATFORMU", {
+      x: 50,
+      y: 735,
+      size: 10,
+      font,
+      color: rgb(0.4, 0.4, 0.4),
+    });
+
+    page.drawText("ODEME DEKONTU", {
+      x: 50,
+      y: 680,
+      size: 20,
+      font: boldFont,
+      color: rgb(0, 0, 0),
+    });
+    page.drawLine({
+      start: { x: 50, y: 660 },
+      end: { x: 545, y: 660 },
+      thickness: 1,
+      color: rgb(0.8, 0.8, 0.8),
+    });
+
+    // Fatura Detayları
+    page.drawText("Musteri:", { x: 50, y: 630, size: 12, font: boldFont });
+    page.drawText(customerName, { x: 150, y: 630, size: 12, font });
+
+    page.drawText("Urun/Hizmet:", { x: 50, y: 600, size: 12, font: boldFont });
+    page.drawText(productName, { x: 150, y: 600, size: 12, font });
+
+    page.drawText("Siparis No:", { x: 50, y: 570, size: 12, font: boldFont });
+    page.drawText(merchantOid, { x: 150, y: 570, size: 12, font });
+
+    page.drawText("Tarih:", { x: 50, y: 540, size: 12, font: boldFont });
+    page.drawText(paymentDate.toLocaleDateString("tr-TR"), {
+      x: 150,
+      y: 540,
+      size: 12,
+      font,
+    });
+
+    // Tutar
+    page.drawText("ODENEN TUTAR:", { x: 50, y: 490, size: 14, font: boldFont });
+    page.drawText(`${amount} ${currency}`, {
+      x: 200,
+      y: 490,
+      size: 14,
+      font: boldFont,
+      color: rgb(0.06, 0.72, 0.5),
+    });
+
+    // Alt Bilgi
+    page.drawText("Bu belge mali deger tasimaz, bilgilendirme amaclidir.", {
+      x: 50,
+      y: 100,
+      size: 10,
+      font,
+      color: rgb(0.5, 0.5, 0.5),
+    });
+
+    // PDF'i Buffer formatına çeviriyoruz
+    const pdfBytes = await pdfDoc.save();
+    const pdfBuffer = Buffer.from(pdfBytes);
+
+    // 2. RESEND İLE E-POSTA VE PDF GÖNDERİMİ
+    await resend.emails.send({
+      from: "Nexa <info@nxa.com.tr>", // Resend'de onayladığın domain
+      to: user.email,
+      subject: `Nexa Platform - ${productName} Ödeme Dekontu`,
+      html: `
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
+          <h2 style="color: #10b981;">Ödemeniz Başarıyla Alındı! ✅</h2>
+          <p>Sayın <strong>${customerName}</strong>,</p>
+          <p><strong>${productName}</strong> hizmeti için gerçekleştirdiğiniz <strong>${amount} ${currency}</strong> tutarındaki ödemeniz sistemimize başarıyla yansımış ve hizmetiniz aktif edilmiştir.</p>
+          <div style="background-color: #f8fafc; padding: 15px; border-left: 4px solid #2563eb; margin: 20px 0;">
+            <p style="margin: 0;"><strong>Sipariş No:</strong> ${merchantOid}</p>
+          </div>
+          <p>İşleminize ait detaylı dekont bu e-postanın ekinde (PDF) yer almaktadır.</p>
+          <br/>
+          <p style="font-size: 12px; color: #64748b;">© 2026 Nexa Platform. Tüm hakları saklıdır.</p>
+        </div>
+      `,
+      attachments: [
+        {
+          filename: `Nexa_Dekont_${merchantOid}.pdf`,
+          content: pdfBuffer,
+        },
+      ],
+    });
+
+    // Gönderim başarılıysa DB'yi güncelle
+    subscription.invoiceSent = true;
+    await subscription.save();
+
+    console.log(
+      `📧 Dekont e-postası Resend ile gönderildi: ${user.email} (${merchantOid})`,
+    );
+  } catch (error) {
+    console.error("PDF oluşturma veya Resend e-posta gönderim hatası:", error);
+  }
+}
 
 export async function POST(req: Request) {
   try {
@@ -33,7 +179,9 @@ export async function POST(req: Request) {
     if (status === "success") {
       await connectMongoDB();
 
-      const subscription = await Subscription.findOne({ merchantOid: merchant_oid });
+      const subscription = await Subscription.findOne({
+        merchantOid: merchant_oid,
+      });
 
       if (subscription) {
         const product = await Product.findById(subscription.productId);
@@ -60,6 +208,15 @@ export async function POST(req: Request) {
             $inc: { salesCount: 1 },
           });
         }
+
+        // Faturayı Gönder!
+        // PayTR'ı bekletmemek için await'siz çağırıyoruz (Fire and forget)
+        sendPaymentReceipt(
+          subscription,
+          product,
+          total_amount,
+          merchant_oid,
+        ).catch(console.error);
 
         revalidatePath("/profil");
         revalidatePath("/urunler");

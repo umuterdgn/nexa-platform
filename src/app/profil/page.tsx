@@ -38,16 +38,17 @@ export default async function ProfilPage({
   const _forceRegisterProductSchema = Product.modelName;
   const _forceRegisterSubscriptionSchema = Subscription.modelName;
 
-  const subs = (await Subscription.find({ userId: session.user.id })
+  // 1. Veriyi Mongoose üzerinden lean() ile ham olarak çekiyoruz
+  const rawSubs = await Subscription.find({ userId: session.user.id })
     .populate<{ productId: IProductDocument }>("productId")
     .sort({ updatedAt: -1 })
-    .lean()) as unknown as PopulatedSubscription[];
+    .lean();
+
+  // 2. Next.js Client Component hatasını engellemek için ObjectId ve Date sınıflarını saf metne serileştiriyoruz
+  const subs = JSON.parse(JSON.stringify(rawSubs)) as PopulatedSubscription[];
 
   const activeSubs = subs.filter(
-    (s) =>
-      s.status === "active" &&
-      s.productId &&
-      getDaysRemaining(s) > 0,
+    (s) => s.status === "active" && s.productId && getDaysRemaining(s) > 0,
   );
 
   return (

@@ -15,6 +15,10 @@ export interface IUser {
   password: string;
   role: UserRole;
   subscriptions: Types.ObjectId[];
+  isVerified: boolean;
+  verificationToken?: string;
+  resetPasswordToken?: string;
+  resetPasswordExpires?: Date;
   createdAt: Date;
 }
 
@@ -27,6 +31,10 @@ const UserSchema = new Schema<IUserDocument>(
     password: { type: String, required: true, select: false },
     role: { type: String, enum: ["admin", "customer"], default: "customer" },
     subscriptions: [{ type: Schema.Types.ObjectId, ref: "Subscription" }],
+    isVerified: { type: Boolean, default: false },
+    verificationToken: { type: String, select: false },
+    resetPasswordToken: { type: String, select: false },
+    resetPasswordExpires: { type: Date, select: false },
   },
   { timestamps: { createdAt: true, updatedAt: false } }
 );
