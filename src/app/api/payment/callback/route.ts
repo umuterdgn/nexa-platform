@@ -15,6 +15,24 @@ import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 // Resend API'yi başlatıyoruz
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+// 🌟 EKLENEN SİHİRLİ FONKSİYON: PDF'in çökmesini engelleyen Türkçe karakter temizleyici
+const clearTurkishChars = (str: string) => {
+  if (!str) return "";
+  return str
+    .replace(/ğ/g, "g")
+    .replace(/Ğ/g, "G")
+    .replace(/ş/g, "s")
+    .replace(/Ş/g, "S")
+    .replace(/ı/g, "i")
+    .replace(/İ/g, "I")
+    .replace(/ö/g, "o")
+    .replace(/Ö/g, "O")
+    .replace(/ç/g, "c")
+    .replace(/Ç/g, "C")
+    .replace(/ü/g, "u")
+    .replace(/Ü/g, "U");
+};
+
 async function sendPaymentReceipt(
   subscription: InstanceType<typeof Subscription>,
   product: InstanceType<typeof Product> | null,
@@ -36,6 +54,10 @@ async function sendPaymentReceipt(
   const paymentDate = new Date();
   const productName = product?.title ?? "Nexa Hizmeti";
   const customerName = user.name || user.email;
+
+  // SADECE PDF içine yazılacak güvenli (İngilizce karakterli) metinler
+  const safeProductName = clearTurkishChars(productName);
+  const safeCustomerName = clearTurkishChars(customerName);
 
   try {
     // 1. PDF-LIB İLE DİNAMİK DEKONT ÇİZİMİ
@@ -74,12 +96,12 @@ async function sendPaymentReceipt(
       color: rgb(0.8, 0.8, 0.8),
     });
 
-    // Fatura Detayları
+    // Fatura Detayları (Burada patlamaması için 'safe' olanları kullanıyoruz)
     page.drawText("Musteri:", { x: 50, y: 630, size: 12, font: boldFont });
-    page.drawText(customerName, { x: 150, y: 630, size: 12, font });
+    page.drawText(safeCustomerName, { x: 150, y: 630, size: 12, font });
 
     page.drawText("Urun/Hizmet:", { x: 50, y: 600, size: 12, font: boldFont });
-    page.drawText(productName, { x: 150, y: 600, size: 12, font });
+    page.drawText(safeProductName, { x: 150, y: 600, size: 12, font });
 
     page.drawText("Siparis No:", { x: 50, y: 570, size: 12, font: boldFont });
     page.drawText(merchantOid, { x: 150, y: 570, size: 12, font });
@@ -115,7 +137,7 @@ async function sendPaymentReceipt(
     const pdfBytes = await pdfDoc.save();
     const pdfBuffer = Buffer.from(pdfBytes);
 
-    // 2. RESEND İLE E-POSTA VE PDF GÖNDERİMİ
+    // 2. RESEND İLE E-POSTA VE PDF GÖNDERİMİ (HTML kısmında orijinal Türkçe isimleri kullanıyoruz, e-postada sorun olmaz)
     await resend.emails.send({
       from: "Nexa <info@nxa.com.tr>", // Resend'de onayladığın domain
       to: user.email,
