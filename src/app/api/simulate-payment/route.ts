@@ -5,6 +5,22 @@ import { connectMongoDB } from "@/lib/mongodb";
 import User from "@/models/User";
 import { Product } from "@/models/Product";
 import { Subscription } from "@/models/Subscription";
+import jwt from "jsonwebtoken";
+
+// SSO Token Üretim Fonksiyonu
+function generateSSOToken(user: any, subscription: any): string {
+  const payload = {
+    nexaUserId: user._id.toString(),
+    email: user.email,
+    name: user.name,
+    subscriptionId: subscription._id.toString(),
+    productId: subscription.productId.toString(),
+    exp: Math.floor(Date.now() / 1000) + 60 * 5, // 5 dakika geçerli
+  };
+
+  const secretKey = process.env.SSO_SECRET_KEY || "nexa-cok-gizli-sso-anahtari-2026";
+  return jwt.sign(payload, secretKey);
+}
 
 export async function POST(req: Request) {
   try {
@@ -78,7 +94,19 @@ export async function POST(req: Request) {
     await Product.findByIdAndUpdate(product._id, {
       $inc: { salesCount: 1 },
     });
-    // 7. İşlem Başarılı: Tarayıcıyı ham JSON göstermek yerine şık bir şekilde Müşteri Paneline yönlendiriyoruz
+
+    // 7. SSO Token Üretimi ve Tam Vaktinde'ye Yönlendirme
+    const user = await User.findById(session.user.id);
+    if (user) {
+      const ssoToken = generateSSOToken(user, subscription);
+      const tamvaktindeUrl = `https://tamvaktinde.com.tr/auth/sso?token=${ssoToken}`;
+      
+      console.log(`🔄 SSO Token üretildi ve yönlendirme yapılıyor: ${tamvaktindeUrl}`);
+      
+      return NextResponse.redirect(tamvaktindeUrl, 302);
+    }
+
+    // 8. Fallback: Eğer user bulunamazsa profil sayfasına yönlendir
     return NextResponse.redirect(
       new URL("/profil?odeme=basarili", req.url),
       303,

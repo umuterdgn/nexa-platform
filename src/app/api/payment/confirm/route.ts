@@ -10,7 +10,7 @@ import { getDurationDaysForCycle } from "@/lib/product-pricing";
 
 /**
  * PayTR merchant_ok_url sonrası çağrılır.
- * Webhook henüz ulaşmadıysa (localhost / test modu) pending aboneliği aktifleştirir.
+ * Webhook henüz ulaşmadıysa (test modu) pending aboneliği aktifleştirir.
  */
 export async function POST() {
   try {

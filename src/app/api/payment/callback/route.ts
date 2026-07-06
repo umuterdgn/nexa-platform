@@ -11,9 +11,25 @@ import {
 import crypto from "crypto";
 import { Resend } from "resend";
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
+import jwt from "jsonwebtoken";
 
 // Resend API'yi başlatıyoruz
 const resend = new Resend(process.env.RESEND_API_KEY);
+
+// 🌟 SSO Token Üretim Fonksiyonu
+function generateSSOToken(user: any, subscription: any): string {
+  const payload = {
+    nexaUserId: user._id.toString(),
+    email: user.email,
+    name: user.name,
+    subscriptionId: subscription._id.toString(),
+    productId: subscription.productId.toString(),
+    exp: Math.floor(Date.now() / 1000) + 60 * 5, // 5 dakika geçerli
+  };
+
+  const secretKey = process.env.SSO_SECRET_KEY || "nexa-cok-gizli-sso-anahtari-2026";
+  return jwt.sign(payload, secretKey);
+}
 
 // 🌟 EKLENEN SİHİRLİ FONKSİYON: PDF'in çökmesini engelleyen Türkçe karakter temizleyici
 const clearTurkishChars = (str: string) => {
@@ -241,6 +257,20 @@ export async function POST(req: Request) {
           );
         } catch (emailError) {
           console.error("Dekont e-postası gönderilemedi:", emailError);
+        }
+
+        // 🌟 SSO Token Üretimi ve Tam Vaktinde'ye Yönlendirme
+        const user = await User.findById(subscription.userId);
+        if (user) {
+          const ssoToken = generateSSOToken(user, subscription);
+          const tamvaktindeUrl = `https://tamvaktinde.com.tr/auth/sso?token=${ssoToken}`;
+          
+          console.log(`🔄 SSO Token üretildi ve yönlendirme yapılıyor: ${tamvaktindeUrl}`);
+          
+          revalidatePath("/profil");
+          revalidatePath("/urunler");
+
+          return NextResponse.redirect(tamvaktindeUrl, 302);
         }
 
         revalidatePath("/profil");
