@@ -115,7 +115,7 @@ export default async function ProfilPage({
                     name={product.title}
                     daysRemaining={daysRemaining}
                     totalDays={totalDays || 30}
-                    panelUrl={`/sso?subId=${String(sub._id)}`}
+                    panelUrl={product.panelUrl ? `/sso?subId=${String(sub._id)}` : undefined}
                     icon={getProductIcon(product.slug)}
                   />
                 );

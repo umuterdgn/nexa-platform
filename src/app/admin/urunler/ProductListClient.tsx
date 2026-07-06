@@ -22,6 +22,7 @@ export function ProductListClient({ initialProducts }: { initialProducts: any[] 
     durationDays: "30",
     features: "",
     requiredFields: "",
+    panelUrl: "",
   });
 
   // Düzenleme Modalı Açıldığında Verileri Doldurur
@@ -37,6 +38,7 @@ export function ProductListClient({ initialProducts }: { initialProducts: any[] 
       durationDays: product.durationDays?.toString() || "30",
       features: product.features?.join(", ") || "",
       requiredFields: product.requiredFields?.join(", ") || "",
+      panelUrl: product.panelUrl || "",
     });
     setIsModalOpen(true);
   };
@@ -54,6 +56,7 @@ export function ProductListClient({ initialProducts }: { initialProducts: any[] 
       durationDays: "30",
       features: "",
       requiredFields: "",
+      panelUrl: "",
     });
     setIsModalOpen(true);
   };
@@ -70,6 +73,7 @@ export function ProductListClient({ initialProducts }: { initialProducts: any[] 
       durationDays: formData.type === "service" ? 0 : Number(formData.durationDays),
       features: formData.features.split(",").map((f) => f.trim()).filter(Boolean),
       requiredFields: formData.requiredFields.split(",").map((f) => f.trim()).filter(Boolean),
+      panelUrl: formData.panelUrl || undefined,
       productId: editingProduct?._id || null,
     };
 
@@ -304,6 +308,18 @@ export function ProductListClient({ initialProducts }: { initialProducts: any[] 
                   className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-2.5 text-sm text-white focus:border-nexa-electric focus:outline-none"
                   placeholder="Yüksek Hız, 7/24 Destek, Sınırsız Veri"
                 />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">🔗 Yönetim Paneli SSO URL</label>
+                <input
+                  type="text"
+                  value={formData.panelUrl}
+                  onChange={(e) => setFormData({ ...formData, panelUrl: e.target.value })}
+                  className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-2.5 text-sm text-white focus:border-nexa-electric focus:outline-none"
+                  placeholder="https://tamvaktinde.com.tr/auth/sso"
+                />
+                <p className="text-[10px] text-slate-500 mt-1">Ürün satın alındığında müşterinin yönlendirileceği SaaS panel adresi.</p>
               </div>
 
               <div className="flex justify-end gap-3 pt-4 border-t border-white/5">

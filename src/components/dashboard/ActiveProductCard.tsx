@@ -6,7 +6,7 @@ export interface ActiveProduct {
   name: string;
   daysRemaining: number;
   totalDays: number;
-  panelUrl: string;
+  panelUrl?: string;
   icon?: "calendar" | "wallet";
 }
 
@@ -57,14 +57,24 @@ export function ActiveProductCard({
         </div>
       </div>
 
-      <a
-        href={panelUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="mt-6 inline-flex items-center justify-center rounded-xl bg-[#1D4ED8] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#2563EB]"
-      >
-        Yönetim Paneline Git
-      </a>
+      {panelUrl ? (
+        <a
+          href={panelUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-6 inline-flex items-center justify-center rounded-xl bg-[#1D4ED8] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#2563EB]"
+        >
+          Yönetim Paneline Git
+        </a>
+      ) : (
+        <button
+          disabled
+          className="mt-6 inline-flex items-center justify-center rounded-xl bg-slate-700 px-4 py-2.5 text-sm font-semibold text-slate-400 cursor-not-allowed"
+          title="Bu ürün için panel adresi tanımlanmamış"
+        >
+          Panel Tanımlanmamış
+        </button>
+      )}
     </article>
   );
 }

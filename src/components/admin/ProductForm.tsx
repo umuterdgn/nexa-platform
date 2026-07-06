@@ -43,6 +43,7 @@ export function ProductForm() {
       price: form.get("price"),
       features: form.get("features"),
       type: form.get("type"),
+      panelUrl: form.get("panelUrl"),
     };
 
     const res = await fetch("/api/admin/products", {
@@ -105,6 +106,14 @@ export function ProductForm() {
           name="features"
           className={inputClass}
           placeholder="Sınırsız randevu, SMS hatırlatma, Takvim sync"
+        />
+      </Field>
+
+      <Field label="Yönetim Paneli SSO URL">
+        <input
+          name="panelUrl"
+          className={inputClass}
+          placeholder="https://tamvaktinde.com.tr/auth/sso"
         />
       </Field>
 
