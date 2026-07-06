@@ -14,15 +14,18 @@ export const dynamic = "force-dynamic";
 
 export default async function CheckoutPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ plan?: string }>;
 }) {
   const resolvedParams = await params;
   const productId = resolvedParams.id;
+  const { plan } = await searchParams;
 
   const session = await getServerSession(authOptions);
   if (!session?.user) {
-    redirect(`/auth/login?callbackUrl=/checkout/${productId}`);
+    redirect(`/auth/login?callbackUrl=/checkout/${productId}${plan ? `?plan=${plan}` : ""}`);
   }
 
   await connectMongoDB();
@@ -59,6 +62,7 @@ export default async function CheckoutPage({
     activePrice,
     billingCycle,
     pricing: product.pricing,
+    plan,
   };
 
   return (

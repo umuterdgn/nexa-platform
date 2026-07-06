@@ -20,7 +20,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Oturum bulunamadı" }, { status: 401 });
     }
 
-    const { productId, billingCycle: requestedCycle } = await req.json();
+    const { productId, billingCycle: requestedCycle, planType } = await req.json();
     if (!productId) {
       return NextResponse.json({ error: "Ürün ID eksik" }, { status: 400 });
     }
@@ -42,7 +42,7 @@ export async function POST(req: Request) {
     const merchant_salt = process.env.PAYTR_MERCHANT_SALT!;
 
     const merchant_oid = `NEXA${Date.now()}${Math.floor(Math.random() * 1000)}`;
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://nxa.com.tr";
     const merchant_ok_url = `${appUrl}/profil?odeme=basarili`;
     const merchant_fail_url = `${appUrl}/checkout/${productId}?hata=odeme_basarisiz`;
 
@@ -80,6 +80,7 @@ export async function POST(req: Request) {
       productId: product._id,
       status: "pending_payment",
       billingCycle,
+      planType,
       merchantOid: merchant_oid,
       invoiceSent: false,
       startDate: new Date(),

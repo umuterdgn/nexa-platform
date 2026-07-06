@@ -12,6 +12,7 @@ interface CheckoutProduct {
   type: "saas" | "service";
   activePrice: number;
   billingCycle: BillingCycle;
+  plan?: string;
 }
 
 export function CheckoutClient({ product }: { product: CheckoutProduct }) {
@@ -32,6 +33,7 @@ export function CheckoutClient({ product }: { product: CheckoutProduct }) {
         body: JSON.stringify({
           productId: product.id,
           billingCycle: product.billingCycle,
+          planType: product.plan,
         }),
       });
 

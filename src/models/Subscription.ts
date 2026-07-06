@@ -20,6 +20,7 @@ export interface ISubscription {
   productId: Types.ObjectId;
   status: SubscriptionStatus;
   billingCycle?: BillingCycle;
+  planType?: string;
   startDate: Date;
   endDate: Date;
   merchantOid?: string;
@@ -66,6 +67,7 @@ const SubscriptionSchema = new Schema<ISubscriptionDocument>(
       type: String,
       enum: ["monthly", "yearly", "one_time"],
     },
+    planType: { type: String },
     startDate: { type: Date, required: true },
     endDate: { type: Date, required: true },
     merchantOid: { type: String, required: false },

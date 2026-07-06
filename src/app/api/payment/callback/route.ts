@@ -24,6 +24,7 @@ function generateSSOToken(user: any, subscription: any): string {
     name: user.name,
     subscriptionId: subscription._id.toString(),
     productId: subscription.productId.toString(),
+    planType: subscription.planType || null,
     exp: Math.floor(Date.now() / 1000) + 60 * 5, // 5 dakika geçerli
   };
 

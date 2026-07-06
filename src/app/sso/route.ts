@@ -51,6 +51,7 @@ export async function GET(req: Request) {
       name: session.user.name,
       productType: product.type, // Artık TypeScript itiraz etmeyecek
       productSlug: product.slug, // Artık TypeScript itiraz etmeyecek
+      planType: subscription.planType || null, // Paket/Plan bilgisini ekle
       exp: Math.floor(Date.now() / 1000) + 60 * 5, // Bilet sadece 5 dakika geçerli!
     };
 
