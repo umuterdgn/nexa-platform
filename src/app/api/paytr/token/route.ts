@@ -58,7 +58,7 @@ export async function POST(req: Request) {
     testMode;
 
   const paytrToken = createPaytrToken(hashStr, merchantKey, merchantSalt);
-  const baseUrl = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
+  const baseUrl = process.env.NEXTAUTH_URL ?? "https://nxa.com.tr";
 
   const body = new URLSearchParams({
     merchant_id: merchantId,

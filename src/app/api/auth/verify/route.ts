@@ -5,7 +5,7 @@ import User from "@/models/User";
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const token = searchParams.get("token");
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://nxa.com.tr";
 
   if (!token) {
     return NextResponse.redirect(`${appUrl}/auth/login?error=invalid_token`);
