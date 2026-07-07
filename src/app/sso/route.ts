@@ -60,12 +60,13 @@ export async function GET(req: Request) {
       process.env.SSO_SECRET_KEY || "nexa-cok-gizli-sso-anahtari-2026";
     const token = jwt.sign(payload, secretKey);
 
-    // 6. Hedef SaaS Uygulamasının Adresini Belirle - Dinamik panelUrl kullanımı
-    const targetAppUrl = product.panelUrl 
-      ? `${product.panelUrl}?token=${token}`
-      : `https://tamvaktinde.com.tr/auth/sso?token=${token}`; // Fallback
+    let targetBaseUrl = product.panelUrl || "https://tamvaktinde.com.tr";
 
-    // 7. Müşteriyi şifreli biletiyle birlikte hedef SaaS'a yönlendir
+    if (targetBaseUrl.includes("tamvaktinde.com.tr")) {
+      targetBaseUrl = "https://tamvaktinde.com.tr/auth/sso";
+    }
+
+    const targetAppUrl = `${targetBaseUrl}?token=${token}`;
     return NextResponse.redirect(targetAppUrl, 302);
   } catch (error) {
     console.error("SSO Üretim Hatası:", error);
