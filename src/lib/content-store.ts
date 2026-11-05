@@ -271,13 +271,27 @@ export async function deleteContent(id: string): Promise<boolean> {
 export async function saveLead(email: string, source: string): Promise<ILeadItem> {
   if (!isDbTemporarilyDown()) {
     try {
-      const lead = await withDbTimeout(
-        prisma.lead.upsert({
+      const existing = await withDbTimeout(
+        prisma.lead.findFirst({
           where: { email },
-          update: { source },
-          create: { email, source },
         })
       );
+
+      let lead;
+      if (existing) {
+        lead = await withDbTimeout(
+          prisma.lead.update({
+            where: { id: existing.id },
+            data: { source },
+          })
+        );
+      } else {
+        lead = await withDbTimeout(
+          prisma.lead.create({
+            data: { email, source },
+          })
+        );
+      }
       return lead as ILeadItem;
     } catch (error) {
       markDbFailure();
