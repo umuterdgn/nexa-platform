@@ -1,0 +1,210 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ContentType {
+  BLOG
+  CASE_STUDY
+  GLOSSARY
+}
+
+model Content {
+  id              String      @id @default(cuid())
+  type            ContentType
+  title           String
+  slug            String      @unique
+  content         String      @db.Text // Rich HTML or Markdown content
+  excerpt         String?     @db.Text // Short summary for cards
+  metaTitle       String?     // For SEO/GEO
+  metaDescription String?     // For SEO/GEO
+  isPublished     Boolean     @default(false)
+  coverImage      String?     // URL for cover photo
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+}
+
+model Lead {
+  id           String   @id @default(cuid())
+  name         String?
+  email        String
+  phone        String?
+  companyName  String?
+  productSlug  String?  // "nexa-erp", "tam-vaktinde", "nexa-pos", "nexa-custom", "ai_token_5"
+  productTitle String?  // "Nexa ERP (İnşaat CDE)", "Tam Vaktinde SaaS"
+  budget       String?
+  notes        String?  @db.Text
+  status       String   @default("PENDING") // "PENDING" (Bekliyor) | "CONTACTED" (Görüşüldü) | "WON" (Satışa Döndü) | "LOST" (İptal)
+  source       String   @default("Strateji_Toplantisi") // "Strateji_Toplantisi" | "Teklif_Iste" | "Bize_Ulasin"
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([status, createdAt])
+  @@index([email])
+}
+
+// ==========================================
+// B2B SaaS Dinamik Satış ve Ödeme Mimarisi
+// ==========================================
+
+enum OrderStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  REFUNDED
+}
+
+enum BillingCycle {
+  MONTHLY
+  YEARLY
+}
+
+enum TenantStatus {
+  IDLE
+  PROVISIONING
+  ACTIVE
+  FAILED
+}
+
+model Product {
+  id                 String         @id @default(cuid())
+  slug               String         @unique // örn: "nexa-erp", "tam-vaktinde", "ai_token_5"
+  title              String
+  tagline            String?
+  description        String         @db.Text
+  badge              String?        // örn: "En Çok Satan Kurumsal Çözüm"
+  category           String         @default("SAAS")
+  isActive           Boolean        @default(true)
+  ssoUrl             String?        // Yönetim Paneli SSO URL (Örn: https://tamvaktinde.com.tr/auth/sso)
+  panelUrl           String?        // Alternatif yönetim paneli URL'i
+  provisioningApiUrl String?        // Tenant açılış webhook adresi: https://api.tamvaktinde.com/v1/tenants
+  features           String[]       // Genel ürün öne çıkan özellikleri
+  plans              PricingPlan[]
+  addons             ProductAddon[]
+  orders             Order[]
+  subscriptions      Subscription[]
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+}
+
+model PricingPlan {
+  id           String        @id @default(cuid())
+  productId    String
+  product      Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  tier         String        // BASIC, PRO, ENTERPRISE
+  name         String        // "Başlangıç (Basic)", "Büyüme (Pro)", "Kurumsal (Enterprise)"
+  description  String?
+  monthlyPrice Decimal       @db.Decimal(10, 2)
+  yearlyPrice  Decimal       @db.Decimal(10, 2) // Yıllık peşin ödemede aylık veya paket bazlı yıllık karşılığı
+  currency     String        @default("TRY")
+  isPopular    Boolean       @default(false)
+  features     String[]      // Paket içeriği özellikleri
+  maxUsers     Int           @default(5)
+  storageGb    Int           @default(10)
+  orders       Order[]
+  subscriptions Subscription[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@unique([productId, tier])
+}
+
+model ProductAddon {
+  id           String   @id @default(cuid())
+  productId    String
+  product      Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  key          String   // örn: "extra-users-50", "advanced-bi", "sla-support"
+  title        String   // "+50 Personel Lisansı", "Gelişmiş BI Modülü"
+  description  String?
+  monthlyPrice Decimal  @db.Decimal(10, 2)
+  yearlyPrice  Decimal  @db.Decimal(10, 2)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([productId, key])
+}
+
+model User {
+  id            String         @id @default(cuid())
+  email         String         @unique
+  name          String?
+  password      String?
+  role          String         @default("customer") // "customer" | "admin"
+  companyName   String?
+  phone         String?
+  isVerified    Boolean        @default(true)
+  subscriptions Subscription[]
+  orders        Order[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+model Subscription {
+  id            String       @id @default(cuid())
+  userId        String?
+  user          User?        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userEmail     String
+  productId     String
+  product       Product      @relation(fields: [productId], references: [id])
+  planId        String?
+  plan          PricingPlan? @relation(fields: [planId], references: [id])
+  planType      String?      // "Yıllık Plan", "Pro Plan", "Başlangıç"
+  billingCycle  BillingCycle @default(YEARLY)
+  status        String       @default("active") // "active" | "expired" | "pending_payment"
+  startDate     DateTime     @default(now())
+  endDate       DateTime
+  merchantOid   String?
+  orderNumber   String?
+  invoiceSent   Boolean      @default(true)
+  invoiceNumber String?
+  invoiceAmount Decimal?     @db.Decimal(10, 2)
+  autoRenew     Boolean      @default(false)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@index([userEmail, status])
+  @@index([userId, status])
+}
+
+model Order {
+  id                   String        @id @default(cuid())
+  orderNumber          String        @unique // NXA-ORD-2026-XXXX
+  userId               String?
+  user                 User?         @relation(fields: [userId], references: [id])
+  customerEmail        String
+  customerName         String
+  customerPhone        String?
+  companyName          String
+  taxNumber            String?
+  taxOffice            String?
+  billingCycle         BillingCycle  @default(MONTHLY)
+  
+  productId            String
+  product              Product       @relation(fields: [productId], references: [id])
+  planId               String
+  plan                 PricingPlan   @relation(fields: [planId], references: [id])
+  
+  selectedAddons       Json?         // [{ key: "extra-users-50", title: "+50 Personel", price: 1500 }]
+  subtotal             Decimal       @db.Decimal(10, 2)
+  taxAmount            Decimal       @db.Decimal(10, 2) // KDV
+  totalAmount          Decimal       @db.Decimal(10, 2)
+  currency             String        @default("TRY")
+  
+  status               OrderStatus   @default(PENDING)
+  paymentProvider      String        @default("PAYTR") // "PAYTR" | "IYZICO"
+  paymentTransactionId String?       // Sağlayıcı işlem referans kodu
+  
+  // SaaS Otomasyon & Tenant Aktivasyon (Provisioning)
+  tenantStatus         TenantStatus  @default(IDLE)
+  tenantDomain         String?       // ornek.nxa.com.tr
+  tenantAdminEmail     String?
+  provisionedAt        DateTime?
+  provisioningLogs     Json?         // API yanıt kayıtları
+  
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+}
