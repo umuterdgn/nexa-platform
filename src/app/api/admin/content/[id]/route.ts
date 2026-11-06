@@ -4,6 +4,8 @@ import { authOptions } from "@/lib/auth";
 import { getContentById, updateContent, deleteContent } from "@/lib/content-store";
 import { slugify } from "@/lib/slugify";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
