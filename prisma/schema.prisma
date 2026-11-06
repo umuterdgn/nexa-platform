@@ -63,6 +63,12 @@ enum BillingCycle {
   YEARLY
 }
 
+enum PricingType {
+  SUBSCRIPTION
+  ONE_TIME
+  QUOTE_BASED
+}
+
 enum TenantStatus {
   IDLE
   PROVISIONING
@@ -77,7 +83,10 @@ model Product {
   tagline            String?
   description        String         @db.Text
   badge              String?        // örn: "En Çok Satan Kurumsal Çözüm"
-  category           String         @default("SAAS")
+  category           String         @default("İnşaat & ERP") // "İnşaat & ERP", "Franchise & Rollout", "Kasa/POS", "E-Ticaret", "Custom Software"
+  pricingType        PricingType    @default(SUBSCRIPTION) // SUBSCRIPTION | ONE_TIME | QUOTE_BASED
+  seoTitle           String?        // GEO/SEO uyumluluğu için meta title
+  seoDescription     String?        @db.Text // GEO/SEO uyumluluğu için meta description
   isActive           Boolean        @default(true)
   ssoUrl             String?        // Yönetim Paneli SSO URL (Örn: https://tamvaktinde.com.tr/auth/sso)
   panelUrl           String?        // Alternatif yönetim paneli URL'i

@@ -1,5 +1,6 @@
 export type BillingCycle = "MONTHLY" | "YEARLY";
 export type PricingTier = "BASIC" | "PRO" | "ENTERPRISE";
+export type PricingType = "SUBSCRIPTION" | "ONE_TIME" | "QUOTE_BASED";
 export type OrderStatus = "PENDING" | "SUCCESS" | "FAILED" | "REFUNDED";
 export type TenantStatus = "IDLE" | "PROVISIONING" | "ACTIVE" | "FAILED";
 
@@ -42,7 +43,10 @@ export interface SaaSProductDetail {
   tagline: string;
   description: string;
   badge?: string;
-  category: "SAAS" | "SERVICE";
+  category: string; // "İnşaat & ERP", "Franchise & Rollout", "Kasa/POS", "E-Ticaret", "Custom Software", "SAAS", "SERVICE"
+  pricingType?: PricingType; // "SUBSCRIPTION" | "ONE_TIME" | "QUOTE_BASED"
+  seoTitle?: string;
+  seoDescription?: string;
   isActive: boolean;
   ssoUrl?: string; // Yönetim Paneli SSO URL (Örn: https://tamvaktinde.com.tr/auth/sso)
   panelUrl?: string;

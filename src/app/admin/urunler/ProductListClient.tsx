@@ -1,347 +1,338 @@
 "use client";
 
-import { useState } from "react";
-import { Plus, Edit2, Package, Sparkles, X, Check } from "lucide-react";
+import React, { useState, useMemo } from "react";
+import {
+  Plus,
+  Edit2,
+  Copy,
+  Check,
+  ExternalLink,
+  Link2,
+  Sparkles,
+  Layers,
+  X,
+  Search,
+  Filter,
+  Eye,
+  CheckCircle2,
+} from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { ProductForm, B2B_CATEGORIES } from "@/components/admin/ProductForm";
+import type { PricingType } from "@/types/saas";
 
-export function ProductListClient({ initialProducts }: { initialProducts: any[] }) {
-  const router = useRouter();
-  const [products, setProducts] = useState(initialProducts);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
+  interface ProductItem {
+    id: string;
+    _id?: string;
+    slug: string;
+    title: string;
+    tagline?: string;
+    description: string;
+    badge?: string;
+    category: string;
+    pricingType?: PricingType;
+    seoTitle?: string;
+    seoDescription?: string;
+    isActive: boolean;
+    ssoUrl?: string;
+    panelUrl?: string;
+    features: string[];
+    plans: any[];
+    price?: number;
+    discountPrice?: number;
+    durationDays?: number;
+  }
 
-  // Form State
-  const [formData, setFormData] = useState({
-    title: "",
-    slug: "",
-    description: "",
-    price: "",
-    discountPrice: "",
-    type: "saas",
-    durationDays: "30",
-    features: "",
-    requiredFields: "",
-    panelUrl: "",
-  });
+  export function ProductListClient({ initialProducts }: { initialProducts: ProductItem[] }) {
+    const router = useRouter();
+    const [products, setProducts] = useState<ProductItem[]>(initialProducts);
+    const [selectedCategory, setSelectedCategory] = useState<string>("Tümü");
+    const [searchQuery, setSearchQuery] = useState<string>("");
+    const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
-  // Düzenleme Modalı Açıldığında Verileri Doldurur
-  const openEditModal = (product: any) => {
-    setEditingProduct(product);
-    setFormData({
-      title: product.title,
-      slug: product.slug,
-      description: product.description,
-      price: product.price.toString(),
-      discountPrice: product.discountPrice?.toString() || "",
-      type: product.type,
-      durationDays: product.durationDays?.toString() || "30",
-      features: product.features?.join(", ") || "",
-      requiredFields: product.requiredFields?.join(", ") || "",
-      panelUrl: product.panelUrl || "",
-    });
-    setIsModalOpen(true);
-  };
+    // Edit / Add Modal
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [editingProduct, setEditingProduct] = useState<ProductItem | null>(null);
 
-  // Yeni Ürün Ekleme Modalı Açıldığında Formu Sıfırlar
-  const openAddModal = () => {
-    setEditingProduct(null);
-    setFormData({
-      title: "",
-      slug: "",
-      description: "",
-      price: "",
-      discountPrice: "",
-      type: "saas",
-      durationDays: "30",
-      features: "",
-      requiredFields: "",
-      panelUrl: "",
-    });
-    setIsModalOpen(true);
-  };
+    const categories = ["Tümü", ...B2B_CATEGORIES];
 
-  // Kaydetme İşlemi (Hem Ekleme Hem Düzenleme İçin Ortak)
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
+        const filteredProducts = useMemo(() => {
+          return products.filter((p) => {
+            const matchesCategory =
+              selectedCategory === "Tümü" || p.category === selectedCategory;
+            const matchesSearch =
+              searchQuery === "" ||
+              p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+              p.slug.toLowerCase().includes(searchQuery.toLowerCase()) ||
+              p.description.toLowerCase().includes(searchQuery.toLowerCase());
+            return matchesCategory && matchesSearch;
+          });
+      }, [products, selectedCategory, searchQuery]);
 
-    const payload = {
-      ...formData,
-      price: Number(formData.price),
-      discountPrice: formData.discountPrice ? Number(formData.discountPrice) : 0,
-      durationDays: formData.type === "service" ? 0 : Number(formData.durationDays),
-      features: formData.features.split(",").map((f) => f.trim()).filter(Boolean),
-      requiredFields: formData.requiredFields.split(",").map((f) => f.trim()).filter(Boolean),
-      panelUrl: formData.panelUrl || undefined,
-      productId: editingProduct?._id || null,
-    };
+          const handleCopy = (text: string, key: string) => {
+            if (typeof navigator !== "undefined" && navigator.clipboard) {
+              navigator.clipboard.writeText(text);
+              setCopiedKey(key);
+              setTimeout(() => setCopiedKey(null), 2000);
+            }
+          };
 
-    try {
-      const res = await fetch("/api/admin/products", {
-        method: editingProduct ? "PUT" : "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+          const openEdit = (product: ProductItem) => {
+            setEditingProduct(product);
+            setIsEditModalOpen(true);
+          };
 
-      if (res.ok) {
-        setIsModalOpen(false);
-        router.refresh(); // Sunucudaki veriyi tazele
-        // Sayfa yenilenene kadar yerel state'i güncelle
-        window.location.reload();
-      } else {
-        alert("Bir hata oluştu, verileri kontrol edin.");
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
+          return (
+                <div className="space-y-6">
+                  {/* Kategori Filtreleme Tabları & Arama Kutusu */}
+                  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-slate-900/60 p-4 rounded-2xl border border-slate-800">
+                    {/* Kategori Tabları */}
+                    <div className="flex flex-wrap items-center gap-2">
+                      {categories.map((cat) => {
+                        const isSelected = selectedCategory === cat;
+                        return (
+                          <button
+                            key={cat}
+                            type="button"
+                            onClick={() => setSelectedCategory(cat)}
+                            className={`px-4 py-2 rounded-xl text-xs font-semibold font-mono transition-all duration-200 cursor-pointer ${isSelected
+                                ? "bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20 font-bold"
+                                : "bg-slate-950/80 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800/80"
+                              }`}
+                          >
+                            {cat}
+                          </button>
+                        );
+                      })}
+                    </div>
 
-  return (
-    <div>
-      {/* Üst Ekleme Butonu */}
-      <div className="flex justify-end mb-6">
-        <button
-          onClick={openAddModal}
-          className="inline-flex items-center gap-2 rounded-nexa bg-nexa-electric px-4 py-2.5 text-sm font-medium text-white shadow-neon-sm transition hover:bg-nexa-electric-bright"
-        >
-          <Plus size={16} />
-          Kataloğa Yeni Ürün Ekle
-        </button>
-      </div>
+                    {/* Arama Inputu */}
+                    <div className="relative min-w-[260px]">
+                      <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Ürün adı veya slug ara..."
+                        className="w-full bg-slate-950/90 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 transition"
+                      />
+                    </div>
+                  </div>
 
-      {/* Ürün Listeleme Tablosu */}
-      <div className="rounded-2xl border border-white/5 bg-nexa-anthracite/20 overflow-hidden">
-        <table className="w-full text-left text-sm text-slate-300">
-          <thead className="border-b border-white/10 bg-white/[0.02] text-xs uppercase text-slate-400">
-            <tr>
-              <th className="py-4 px-6">Ürün Detayı</th>
-              <th className="py-4 px-6">Tür / Lisans</th>
-              <th className="py-4 px-6">Fiyatlandırma</th>
-              <th className="py-4 px-6 text-center">Tercih Edilme</th>
-              <th className="py-4 px-6 text-right">Aksiyon</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-white/5">
-            {products.map((product) => (
-              <tr key={product._id} className="hover:bg-white/[0.02] transition-colors">
-                <td className="py-4 px-6">
-                  <div className="font-semibold text-white">{product.title}</div>
-                  <div className="text-xs text-slate-500 font-mono mt-0.5">{product.slug}</div>
-                </td>
-                <td className="py-4 px-6 font-mono">
-                  <span className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset ${
-                    product.type === "saas" 
-                      ? "bg-blue-500/10 text-blue-400 ring-blue-500/20" 
-                      : "bg-purple-500/10 text-purple-400 ring-purple-500/20"
-                  }`}>
-                    {product.type.toUpperCase()}
-                  </span>
-                  {product.type === "saas" && (
-                    <span className="text-xs text-slate-500 block mt-1">
-                      {product.durationDays === 365 ? "📅 Yıllık (365g)" : "⏱️ Aylık (30g)"}
-                    </span>
-                  )}
-                  {product.type === "service" && (
-                    <span className="text-xs text-slate-400 block mt-1 truncate max-w-[150px]" title={product.requiredFields?.join(", ")}>
-                      📋 İstenenler: {product.requiredFields?.length || 0} adet
-                    </span>
-                  )}
-                </td>
-                <td className="py-4 px-6">
-                  {(() => {
-                    const display = product.pricing?.monthly ?? product.pricing?.oneTime ?? product.price ?? 0;
-                    const discounted = product.discountPrice > 0 && product.discountPrice < (product.price ?? 0);
-                    return discounted ? (
-                      <div>
-                        <span className="line-through text-xs text-slate-500 mr-2">₺{product.price}</span>
-                        <span className="text-sm font-semibold text-emerald-400">₺{product.discountPrice}</span>
-                      </div>
-                    ) : (
-                      <span className="text-sm font-semibold text-slate-200">₺{display}</span>
-                    );
-                  })()}
-                </td>
-                <td className="py-4 px-6 text-center">
-                  <span className="bg-nexa-electric/10 text-nexa-electric-bright text-xs px-2.5 py-1 rounded-full font-bold border border-nexa-electric/20">
-                    {product.salesCount || 0} Satış
-                  </span>
-                </td>
-                <td className="py-4 px-6 text-right">
-                  <button
-                    onClick={() => openEditModal(product)}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-slate-300 transition hover:bg-white/10 hover:text-white"
-                  >
-                    <Edit2 size={12} />
-                    Düzenle
-                  </button>
-                </td>
+      {/* Ürün Listesi Tablosu */}
+      <div className="rounded-2xl border border-slate-800 bg-slate-900/40 backdrop-blur-xl overflow-hidden shadow-2xl">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm text-slate-300">
+            <thead className="border-b border-slate-800 bg-slate-950/80 text-[11px] font-mono uppercase text-slate-400 tracking-wider">
+              <tr>
+                <th className="py-4 px-6">Ürün & Kategori</th>
+                <th className="py-4 px-6">URL Slugu (Vitrin Bağlantısı)</th>
+                <th className="py-4 px-6">Yönetim Paneli SSO URL</th>
+                <th className="py-4 px-6">Fiyatlandırma Modeli</th>
+                <th className="py-4 px-6 text-right">Aksiyonlar</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-slate-800/80">
+              {filteredProducts.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="py-12 text-center text-slate-500 text-xs font-mono">
+                    Bu filtreye uygun ürün bulunamadı.
+                  </td>
+                </tr>
+              ) : (
+                filteredProducts.map((p) => {
+                  const slugUrl = `https://nxa.com.tr/urunler/${p.slug}`;
+                  const isSlugCopied = copiedKey === `slug-${p.slug}`;
+                  const isSsoCopied = copiedKey === `sso-${p.slug}`;
+                  const pricingType = p.pricingType || "SUBSCRIPTION";
+
+                  return (
+                    <tr
+                      key={p.id || p.slug}
+                      className="hover:bg-slate-800/30 transition-colors group"
+                    >
+                      {/* Ürün Bilgisi */}
+                      <td className="py-4 px-6">
+                        <div className="flex items-center gap-2.5">
+                          <div>
+                            <div className="font-bold text-white text-base group-hover:text-cyan-300 transition-colors flex items-center gap-2">
+                              <span>{p.title}</span>
+                              {p.badge && (
+                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-mono">
+                                  {p.badge}
+                                </span>
+                              )}
+                            </div>
+                            <div className="mt-1 flex items-center gap-2">
+                              <span className="inline-block text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
+                                📁 {p.category}
+                              </span>
+                              {p.features && p.features.length > 0 && (
+                                <span className="text-[10px] font-mono text-slate-500">
+                                  {p.features.length} özellik
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* URL Slug & 1-Tık Kopyalama */}
+                      <td className="py-4 px-6">
+                        <div className="flex items-center gap-2">
+                          <code className="text-xs font-mono text-cyan-300 bg-cyan-950/40 border border-cyan-500/20 px-2.5 py-1 rounded-lg">
+                            /urunler/{p.slug}
+                          </code>
+                          <button
+                            type="button"
+                            onClick={() => handleCopy(slugUrl, `slug-${p.slug}`)}
+                            title="Tam URL'i Kopyala"
+                            className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition hover:text-white cursor-pointer"
+                          >
+                            {isSlugCopied ? (
+                              <Check className="w-3.5 h-3.5 text-emerald-400" />
+                            ) : (
+                              <Copy className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+                          <Link
+                            href={`/urunler/${p.slug}`}
+                            target="_blank"
+                            title="Yeni Sekmede Vitrini Aç"
+                            className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition hover:text-white"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                          </Link>
+                        </div>
+                        {isSlugCopied && (
+                          <span className="text-[10px] text-emerald-400 font-mono mt-1 block">
+                            ✓ Vitrin bağlantısı panoya kopyalandı!
+                          </span>
+                        )}
+                      </td>
+
+                      {/* SSO Hedef URL & 1-Tık Kopyalama */}
+                      <td className="py-4 px-6">
+                        {p.ssoUrl ? (
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-mono text-slate-300 truncate max-w-[220px]" title={p.ssoUrl}>
+                                {p.ssoUrl}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleCopy(p.ssoUrl || "", `sso-${p.slug}`)}
+                                title="SSO URL'ini Kopyala"
+                                className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition hover:text-white cursor-pointer"
+                              >
+                                {isSsoCopied ? (
+                                  <Check className="w-3.5 h-3.5 text-emerald-400" />
+                                ) : (
+                                  <Copy className="w-3.5 h-3.5" />
+                                )}
+                              </button>
+                            </div>
+                            {isSsoCopied && (
+                              <span className="text-[10px] text-emerald-400 font-mono mt-1 block">
+                                ✓ SSO adresi panoya kopyalandı!
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-slate-600 font-mono italic">
+                            Tanımlanmadı
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Fiyatlandırma Modeli Rozeti & Fiyat */}
+                      <td className="py-4 px-6">
+                        <div className="space-y-1">
+                          {pricingType === "SUBSCRIPTION" && (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-mono font-semibold px-2.5 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                              📅 Abonelik (Aylık/Yıllık)
+                            </span>
+                          )}
+                          {pricingType === "ONE_TIME" && (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-mono font-semibold px-2.5 py-0.5 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                              ⚡ Tek Seferlik (Jeton)
+                            </span>
+                          )}
+                          {pricingType === "QUOTE_BASED" && (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-mono font-semibold px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                              🏢 Özel Teklif (Enterprise)
+                            </span>
+                          )}
+
+                          <div className="text-xs font-mono">
+                            {pricingType === "QUOTE_BASED" ? (
+                              <span className="text-amber-300 font-semibold">Teklife Dayalı</span>
+                            ) : p.price && p.price > 0 ? (
+                              <span className="text-slate-300 font-semibold">
+                                {p.price.toLocaleString("tr-TR")} ₺ / ay
+                              </span>
+                            ) : (
+                              <span className="text-slate-500">Standart Plan</span>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Aksiyon Butonları */}
+                      <td className="py-4 px-6 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => openEdit(p)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-200 transition border border-slate-700 cursor-pointer"
+                          >
+                            <Edit2 className="w-3.5 h-3.5 text-cyan-400" />
+                            <span>Düzenle</span>
+                          </button>
+                          <Link
+                            href={`/urunler/${p.slug}`}
+                            target="_blank"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-xs font-medium text-cyan-300 transition border border-cyan-500/30"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            <span>Vitrin</span>
+                          </Link>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      {/* 🔮 GENİŞLETİLMİŞ EKLEME / DÜZENLEME MODALI */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 overflow-y-auto">
-          <div className="relative w-full max-w-2xl rounded-2xl border border-white/10 bg-nexa-anthracite p-6 shadow-2xl my-8">
-            <button
-              onClick={() => setIsModalOpen(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors"
-            >
-              <X size={20} />
-            </button>
+      {/* DÜZENLEME MODALI */ }
+      { isEditModalOpen && (
+                            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 overflow-y-auto">
+                              <div className="relative w-full max-w-3xl rounded-3xl border border-slate-800 bg-slate-900 p-6 sm:p-10 shadow-2xl my-8 max-h-[90vh] overflow-y-auto">
+                                <button
+                                  type="button"
+                                  onClick={() => setIsEditModalOpen(false)}
+                                  className="absolute top-6 right-6 text-slate-400 hover:text-white p-2 rounded-xl bg-slate-800/80 transition cursor-pointer"
+                                >
+                                  <X className="w-5 h-5" />
+                                </button>
 
-            <h2 className="font-display text-xl font-bold mb-6 flex items-center gap-2">
-              <Sparkles size={18} className="text-nexa-neon" />
-              {editingProduct ? "Ürün Bilgilerini Güncelle" : "Kataloğa Yeni Çözüm Tanımla"}
-            </h2>
+                                <div className="mb-6">
+                                  <span className="text-xs font-mono font-semibold uppercase text-cyan-400 tracking-wider">
+                                    Prisma SaaS Model Güncelleme
+                                  </span>
+                                  <h2 className="text-2xl font-black text-white mt-1">
+                                    {editingProduct ? `Ürünü Düzenle: ${editingProduct.title}` : "Yeni Ürün Tanımla"}
+                                  </h2>
+                                </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <label className="block text-xs font-medium text-slate-400 mb-1">Ürün / Hizmet Adı</label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.title}
-                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                    className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-2.5 text-sm text-white focus:border-nexa-electric focus:outline-none"
-                    placeholder="Örn: Next Finance ERP"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-400 mb-1">URL Slugu (Benzersiz)</label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.slug}
-                    onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
-                    className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-2.5 text-sm text-white focus:border-nexa-electric focus:outline-none"
-                    placeholder="next-finance-erp"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-slate-400 mb-1">Açıklama</label>
-                <textarea
-                  required
-                  rows={3}
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-2.5 text-sm text-white focus:border-nexa-electric focus:outline-none resize-none"
-                  placeholder="Ürünün yeteneklerini ve kapsamını açıklayın..."
-                />
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-3">
-                <div>
-                  <label className="block text-xs font-medium text-slate-400 mb-1">Ürün Türü</label>
-                  <select
-                    value={formData.type}
-                    onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                    className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-2.5 text-sm text-white focus:border-nexa-electric focus:outline-none"
-                  >
-                    <option value="saas">SaaS (Yazılım)</option>
-                    <option value="service">Hizmet (Ajans/Tasarım)</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-400 mb-1">Normal Fiyat (TL)</label>
-                  <input
-                    type="number"
-                    required
-                    value={formData.price}
-                    onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                    className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-2.5 text-sm text-white focus:border-nexa-electric focus:outline-none"
-                    placeholder="3500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-400 mb-1">İndirimli Fiyat (TL)</label>
-                  <input
-                    type="number"
-                    value={formData.discountPrice}
-                    onChange={(e) => setFormData({ ...formData, discountPrice: e.target.value })}
-                    className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-2.5 text-sm text-white focus:border-nexa-electric focus:outline-none"
-                    placeholder="Yoksa boş bırakın"
-                  />
-                </div>
-              </div>
-
-              {formData.type === "saas" ? (
-                <div>
-                  <label className="block text-xs font-medium text-slate-400 mb-1">Lisans Süresi Kontrolü</label>
-                  <select
-                    value={formData.durationDays}
-                    onChange={(e) => setFormData({ ...formData, durationDays: e.target.value })}
-                    className="w-full rounded-xl border border-white/10 bg-nexa-electric/10 px-4 py-2.5 text-sm text-nexa-electric-bright font-bold focus:outline-none"
-                  >
-                    <option value="30" className="bg-black text-white">⏱️ Aylık Plan (30 Gün Erişim)</option>
-                    <option value="365" className="bg-black text-white">📅 Yıllık Plan (365 Gün Erişim)</option>
-                  </select>
-                </div>
-              ) : (
-                <div>
-                  <label className="block text-xs font-medium text-slate-400 mb-1">📋 Hizmet Brifing İsterleri (Virgülle Ayırın)</label>
-                  <input
-                    type="text"
-                    value={formData.requiredFields}
-                    onChange={(e) => setFormData({ ...formData, requiredFields: e.target.value })}
-                    className="w-full rounded-xl border border-purple-500/30 bg-purple-500/5 px-4 py-2.5 text-sm text-purple-400 focus:outline-none"
-                    placeholder="Örn: Logo Dosyası, Renk Tercihleri, Rakip Web Siteleri"
-                  />
-                  <p className="text-[10px] text-slate-500 mt-1">Müşteri siparişi verirken bu girdileri doldurmak zorunda kalacaktır.</p>
-                </div>
-              )}
-
-              <div>
-                <label className="block text-xs font-medium text-slate-400 mb-1">✨ Öne Çıkan Özellikler (Virgülle Ayırın)</label>
-                <input
-                  type="text"
-                  value={formData.features}
-                  onChange={(e) => setFormData({ ...formData, features: e.target.value })}
-                  className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-2.5 text-sm text-white focus:border-nexa-electric focus:outline-none"
-                  placeholder="Yüksek Hız, 7/24 Destek, Sınırsız Veri"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-slate-400 mb-1">🔗 Yönetim Paneli SSO URL</label>
-                <input
-                  type="text"
-                  value={formData.panelUrl}
-                  onChange={(e) => setFormData({ ...formData, panelUrl: e.target.value })}
-                  className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-2.5 text-sm text-white focus:border-nexa-electric focus:outline-none"
-                  placeholder="https://tamvaktinde.com.tr/auth/sso"
-                />
-                <p className="text-[10px] text-slate-500 mt-1">Ürün satın alındığında müşterinin yönlendirileceği SaaS panel adresi.</p>
-              </div>
-
-              <div className="flex justify-end gap-3 pt-4 border-t border-white/5">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-white/10"
-                >
-                  İptal
-                </button>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="rounded-xl bg-blue-600 px-5 py-2 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-50"
-                >
-                  {loading ? "Sistem Kaydediyor..." : "Değişiklikleri Kaydet"}
-                </button>
-              </div>
-            </form>
-          </div>
+                              <ProductForm initialProduct={editingProduct} />
+                            </div>
         </div>
       )}
-    </div>
-  );
+                  </div>
+                  );
 }

@@ -86,15 +86,15 @@ export default async function UrunlerPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {products.map((product, idx) => {
             const isLarge = idx === 0 || idx === 1;
+            const isQuoteBased = product.pricingType === "QUOTE_BASED";
             const basicPlan = product.plans.find((p) => p.tier === "BASIC") || product.plans[0];
             const startingPrice = basicPlan?.yearlyPrice || basicPlan?.monthlyPrice;
 
             return (
               <div
                 key={product.id || product.slug}
-                className={`group relative flex flex-col justify-between overflow-hidden rounded-3xl border border-slate-800/90 bg-gradient-to-b from-slate-900/80 via-slate-900/40 to-slate-950 p-6 sm:p-8 backdrop-blur-xl transition-all duration-300 hover:border-cyan-500/40 hover:shadow-2xl hover:shadow-cyan-500/10 ${
-                  isLarge ? "lg:col-span-2" : "col-span-1"
-                }`}
+                className={`group relative flex flex-col justify-between overflow-hidden rounded-3xl border border-slate-800/90 bg-gradient-to-b from-slate-900/80 via-slate-900/40 to-slate-950 p-6 sm:p-8 backdrop-blur-xl transition-all duration-300 hover:border-cyan-500/40 hover:shadow-2xl hover:shadow-cyan-500/10 ${isLarge ? "lg:col-span-2" : "col-span-1"
+                  }`}
               >
                 {/* Glow Accent on Hover */}
                 <div className="pointer-events-none absolute -top-24 right-0 h-48 w-48 rounded-full bg-cyan-500/10 blur-[60px] group-hover:bg-cyan-500/20 transition-all" />
@@ -102,9 +102,14 @@ export default async function UrunlerPage() {
                 <div>
                   {/* Badge & Category */}
                   <div className="flex items-center justify-between gap-3 mb-4">
-                    <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-[11px] font-mono font-semibold text-cyan-300">
-                      {product.badge || (product.category === "SAAS" ? "B2B SaaS Çözümü" : "Özel Mimari")}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-[11px] font-mono font-semibold text-cyan-300">
+                        {product.badge || product.category}
+                      </span>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800/80 text-slate-400 border border-slate-700">
+                        {product.category}
+                      </span>
+                    </div>
 
                     {product.ssoUrl && (
                       <span className="flex items-center gap-1 text-[10px] font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded">
@@ -146,13 +151,13 @@ export default async function UrunlerPage() {
                 <div className="mt-8 pt-5 border-t border-slate-800/80 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                   <div>
                     <span className="block text-[11px] font-mono text-slate-400">
-                      Başlangıç Fiyatı (Yıllık)
+                      {isQuoteBased ? "Kurumsal Fiyatlandırma" : "Başlangıç Fiyatı (Yıllık)"}
                     </span>
                     <div className="flex items-baseline gap-1">
-                      <span className="text-2xl font-black text-white">
-                        {startingPrice ? `${startingPrice.toLocaleString("tr-TR")} ₺` : "Teklif Usulü"}
-                      </span>
-                      {startingPrice && (
+                        <span className={`text-2xl font-black ${isQuoteBased ? "text-amber-300" : "text-white"}`}>
+                          {isQuoteBased ? "Teklife Dayalı" : startingPrice ? `${startingPrice.toLocaleString("tr-TR")} ₺` : "Teklif Usulü"}
+                        </span>
+                          {!isQuoteBased && startingPrice && (
                         <span className="text-xs text-slate-400 font-mono">/ ay</span>
                       )}
                     </div>
@@ -163,7 +168,7 @@ export default async function UrunlerPage() {
                       href={`/urunler/${product.slug}`}
                       className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-cyan-500/20 transition-all hover:from-cyan-400 hover:to-blue-500 active:scale-95"
                     >
-                      <span>Paketleri İncele & Satın Al</span>
+                      <span>{isQuoteBased ? "Teklif İste & Mimariyi Gör" : "Paketleri İncele & Satın Al"}</span>
                       <ArrowRight className="h-3.5 w-3.5" />
                     </Link>
                   </div>

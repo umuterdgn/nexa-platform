@@ -41,13 +41,21 @@ export default async function AdminUrunEklePage() {
             </p>
           </div>
 
-          <Link
-            href="/admin"
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs font-mono text-slate-300 transition"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span>HQ Paneline Dön</span>
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/admin/urunler"
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs font-mono text-slate-300 transition"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Ürün Listesine Dön</span>
+            </Link>
+            <Link
+              href="/admin"
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs font-mono text-slate-300 transition"
+            >
+              <span>HQ Paneli</span>
+            </Link>
+          </div>
         </div>
 
         {/* Form Kartı */}

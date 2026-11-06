@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
+import Link from "next/link";
 import {
   Check,
   Sparkles,
@@ -171,6 +172,85 @@ export function ProductPricingCheckout({ product }: Props) {
       setIsSubmitting(false);
     }
   };
+
+  // Kurumsal / Özel Teklif Modeli (QUOTE_BASED)
+  if (product.pricingType === "QUOTE_BASED") {
+    return (
+      <section className="relative py-16" id="fiyatlandirma">
+        <div className="flex flex-col items-center justify-center mb-12 text-center">
+          <span className="text-xs font-semibold tracking-wider uppercase text-amber-400 bg-amber-950/70 border border-amber-500/30 px-3.5 py-1 rounded-full mb-4">
+            🏢 Kurumsal & Teklife Dayalı Çözüm
+          </span>
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
+            Şirketinize Özel Terzi İşi Mimari & Fiyatlandırma
+          </h2>
+          <p className="text-slate-400 text-sm sm:text-base max-w-2xl mt-3">
+            {product.title} için sabit bir sepet paketi yerine, şirketinizin SAP/ERP çekirdeği, NeonDB veritabanı ölçeği ve özel IoT isterlerine göre bütçelendirilen kurumsal teklif sunuyoruz.
+          </p>
+        </div>
+
+        {/* 3 Adımlı Mimari & Yol Haritası Kartları */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto mb-12">
+          <div className="rounded-3xl border border-slate-800 bg-slate-900/60 p-7 backdrop-blur-xl">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 font-mono font-bold flex items-center justify-center mb-4">
+              01
+            </div>
+            <h3 className="text-lg font-bold text-white mb-2">Mimari Keşif & Analiz</h3>
+            <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
+              Mevcut sistemleriniz, veri tabanınız ve iş süreçleriniz taranır; SAP / Logo entegrasyon fizibilitesi ve MVP yol haritası çıkartılır.
+            </p>
+          </div>
+
+          <div className="rounded-3xl border border-cyan-500/40 bg-gradient-to-b from-cyan-950/20 to-slate-900/80 p-7 backdrop-blur-xl shadow-xl shadow-cyan-500/5">
+            <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 font-mono font-bold flex items-center justify-center mb-4">
+              02
+            </div>
+            <h3 className="text-lg font-bold text-white mb-2">Terzi İşi Geliştirme</h3>
+            <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
+              Next.js 16, NeonDB ve React Native altyapısıyla 6-8 haftada canlıya alınır. Çift yönlü OData/REST mikroservisleri kurulur.
+            </p>
+          </div>
+
+          <div className="rounded-3xl border border-slate-800 bg-slate-900/60 p-7 backdrop-blur-xl">
+            <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 font-mono font-bold flex items-center justify-center mb-4">
+              03
+            </div>
+            <h3 className="text-lg font-bold text-white mb-2">%100 Kod & IP Mülkiyeti</h3>
+            <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
+              Tüm kaynak kodları, Git reposu ve fikri mülkiyet şirketinize devredilir. 7/24 kritik DevOps SLA desteği sağlanır.
+            </p>
+          </div>
+        </div>
+
+        {/* Kurumsal Teklif ve Randevu Çağrı Kutusu */}
+        <div className="max-w-4xl mx-auto rounded-3xl border border-amber-500/30 bg-gradient-to-r from-slate-900 via-amber-950/20 to-slate-900 p-8 sm:p-12 text-center backdrop-blur-2xl shadow-2xl">
+          <h3 className="text-2xl sm:text-3xl font-black text-white">
+            48 Saatte Fiyat & Mimari Teklifi Alın
+          </h3>
+          <p className="mt-3 text-xs sm:text-sm text-slate-300 max-w-xl mx-auto">
+            İster baş mühendisimizle doğrudan Google Meet üzerinden strateji toplantısı yapın, ister teknik ihtiyaç formunuzu bırakın.
+          </p>
+
+          <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
+            <Link
+              href={`/randevu?product=${product.slug}`}
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-black text-sm shadow-xl shadow-cyan-500/20 transition-all active:scale-95 cursor-pointer"
+            >
+              <span>Strateji Toplantısı Planla (Google Meet)</span>
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+
+            <Link
+              href={`/teklif-al?product=${product.slug}`}
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 rounded-2xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-sm border border-slate-700 transition cursor-pointer"
+            >
+              <span>48 Saatte Fiyat Teklifi İste</span>
+            </Link>
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="relative py-12" id="fiyatlandirma">

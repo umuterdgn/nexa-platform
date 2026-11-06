@@ -37,12 +37,15 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     };
   }
 
+  const metaTitle = product.seoTitle || `${product.title} - Fiyatlandırma & SaaS Paketleri | Nexa Platform`;
+  const metaDescription = product.seoDescription || product.description.slice(0, 160);
+
   return {
-    title: `${product.title} - Fiyatlandırma & SaaS Paketleri | Nexa Platform`,
-    description: product.description.slice(0, 160),
+    title: metaTitle,
+    description: metaDescription,
     openGraph: {
-      title: `${product.title} - Kurumsal B2B Bulut & CDE Çözümü`,
-      description: product.description,
+      title: metaTitle,
+      description: metaDescription,
       type: "website",
     },
   };
@@ -119,8 +122,13 @@ export default async function ProductDetailPage({ params }: PageProps) {
           <div className="max-w-4xl">
             <div className="flex flex-wrap items-center gap-3 mb-5">
               <span className="px-3.5 py-1 text-xs font-bold tracking-wider uppercase rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">
-                {product.category === "SAAS" ? "Bulut CDE & SaaS" : "Özel Mühendislik"}
+                {product.category || "Bulut CDE & SaaS"}
               </span>
+              {product.pricingType === "QUOTE_BASED" && (
+                <span className="px-3.5 py-1 text-xs font-bold tracking-wider uppercase rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/30">
+                  🏢 Özel Teklif (Enterprise)
+                </span>
+              )}
               {product.badge && (
                 <span className="px-3.5 py-1 text-xs font-bold tracking-wider uppercase rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
                   {product.badge}
@@ -142,19 +150,39 @@ export default async function ProductDetailPage({ params }: PageProps) {
 
             {/* Hızlı Butonlar */}
             <div className="mt-8 flex flex-wrap items-center gap-4">
-              <a
-                href="#fiyatlandirma"
-                className="px-7 py-3.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold text-sm shadow-lg shadow-cyan-500/25 transition flex items-center gap-2"
-              >
-                <span>Paketleri & Fiyatları İncele</span>
-                <ArrowRight className="w-4 h-4" />
-              </a>
-              <Link
-                href="/teklif-al"
-                className="px-7 py-3.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-800 font-semibold text-sm transition"
-              >
-                Özel Şantiye Demosu Planla
-              </Link>
+              {product.pricingType === "QUOTE_BASED" ? (
+                <>
+                  <Link
+                    href="/randevu"
+                    className="px-7 py-3.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold text-sm shadow-lg shadow-cyan-500/25 transition flex items-center gap-2"
+                  >
+                    <span>Strateji Toplantısı Planla (Google Meet)</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </Link>
+                  <Link
+                    href={`/teklif-al?product=${product.slug}`}
+                    className="px-7 py-3.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-800 font-semibold text-sm transition"
+                  >
+                    48 Saatte Fiyat & Mimari Teklifi Al
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <a
+                    href="#fiyatlandirma"
+                    className="px-7 py-3.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold text-sm shadow-lg shadow-cyan-500/25 transition flex items-center gap-2"
+                  >
+                    <span>Paketleri & Fiyatları İncele</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </a>
+                  <Link
+                    href="/teklif-al"
+                    className="px-7 py-3.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-800 font-semibold text-sm transition"
+                  >
+                    Özel Şantiye Demosu Planla
+                  </Link>
+                </>
+              )}
             </div>
 
             {/* Metrikler (SaaS / Şantiye KPIs) */}
