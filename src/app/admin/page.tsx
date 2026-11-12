@@ -40,9 +40,9 @@ export default async function AdminOverview() {
   const customers = (users as any[]).filter((u) => u.role !== "admin");
   const gaId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || "G-NEXA2026B2B";
 
-  const pendingLeads = leads.filter((l) => l.status === "PENDING");
-  const wonLeads = leads.filter((l) => l.status === "WON");
-  const contactedLeads = leads.filter((l) => l.status === "CONTACTED");
+  const pendingLeads = leads.filter((l) => l.status === "NEW");
+  const wonLeads = leads.filter((l) => l.status === "CLOSED");
+  const contactedLeads = leads.filter((l) => l.status === "EMAILED");
 
   return (
     <div className="p-6 sm:p-10 lg:p-12 space-y-10 bg-slate-950 text-slate-100 min-h-screen">
@@ -249,18 +249,26 @@ export default async function AdminOverview() {
                   </div>
                   <span
                     className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold border ${
-                      lead.status === "PENDING"
+                      lead.status === "NEW"
                         ? "bg-amber-500/10 text-amber-400 border-amber-500/30"
-                        : lead.status === "CONTACTED"
+                        : lead.status === "EMAILED"
                         ? "bg-blue-500/10 text-blue-400 border-blue-500/30"
-                        : "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                        : lead.status === "MEETING_SET"
+                        ? "bg-purple-500/10 text-purple-400 border-purple-500/30"
+                        : lead.status === "CLOSED"
+                        ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                        : "bg-slate-500/10 text-slate-400 border-slate-500/30"
                     }`}
                   >
-                    {lead.status === "PENDING"
-                      ? "Bekliyor"
-                      : lead.status === "CONTACTED"
-                      ? "Görüşüldü"
-                      : "Kazanıldı"}
+                    {lead.status === "NEW"
+                      ? "Yeni Aday"
+                      : lead.status === "EMAILED"
+                      ? "Mail Atıldı"
+                      : lead.status === "MEETING_SET"
+                      ? "Toplantı Alındı"
+                      : lead.status === "CLOSED"
+                      ? "Satış Kapandı"
+                      : "Kayıp"}
                   </span>
                 </div>
 

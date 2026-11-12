@@ -14,6 +14,7 @@ import {
   Target,
   PlusCircle,
   Activity,
+  Send,
 } from "lucide-react";
 
 export default async function AdminLayout({
@@ -34,8 +35,13 @@ export default async function AdminLayout({
       icon: <Activity size={18} />,
     },
     {
+      href: "/admin/crm",
+      label: "Otonom Satış & CRM",
+      icon: <Send size={18} />,
+    },
+    {
       href: "/admin/teklifler",
-      label: "CRM & Teklifler (Kanban)",
+      label: "Gelen Teklifler (Kanban)",
       icon: <Target size={18} />,
     },
     {

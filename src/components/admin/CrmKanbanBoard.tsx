@@ -18,36 +18,45 @@ import {
   TrendingUp,
   XCircle,
   AlertCircle,
+  Send,
+  Briefcase,
 } from "lucide-react";
-import type { CrmLead, CrmStage } from "@/lib/services/crm-service";
+import type { CrmLead, LeadStatus } from "@/lib/services/crm-service";
 
 interface CrmKanbanBoardProps {
   initialLeads: CrmLead[];
 }
 
 const STAGES: {
-  key: CrmStage;
+  key: LeadStatus;
   title: string;
   badgeClass: string;
   dotColor: string;
   borderHover: string;
 }[] = [
   {
-    key: "PENDING",
-    title: "Yeni Randevu",
+    key: "NEW",
+    title: "Yeni Randevu / Aday",
     badgeClass: "bg-amber-500/10 text-amber-400 border-amber-500/30",
     dotColor: "bg-amber-400",
     borderHover: "hover:border-amber-500/50",
   },
   {
-    key: "CONTACTED",
+    key: "EMAILED",
     title: "Mail Gönderildi",
     badgeClass: "bg-blue-500/10 text-blue-400 border-blue-500/30",
     dotColor: "bg-blue-400",
     borderHover: "hover:border-blue-500/50",
   },
   {
-    key: "WON",
+    key: "MEETING_SET",
+    title: "Toplantı Alındı",
+    badgeClass: "bg-purple-500/10 text-purple-400 border-purple-500/30",
+    dotColor: "bg-purple-400",
+    borderHover: "hover:border-purple-500/50",
+  },
+  {
+    key: "CLOSED",
     title: "Satış Kapandı",
     badgeClass: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
     dotColor: "bg-emerald-400",
@@ -55,7 +64,7 @@ const STAGES: {
   },
   {
     key: "LOST",
-    title: "İptal",
+    title: "İptal / Kayıp",
     badgeClass: "bg-slate-500/10 text-slate-400 border-slate-500/30",
     dotColor: "bg-slate-500",
     borderHover: "hover:border-slate-500/50",
@@ -66,21 +75,24 @@ export function CrmKanbanBoard({ initialLeads }: CrmKanbanBoardProps) {
   const [leads, setLeads] = useState<CrmLead[]>(initialLeads);
   const [search, setSearch] = useState("");
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [sendingMailId, setSendingMailId] = useState<string | null>(null);
 
   const filteredLeads = leads.filter((l) => {
     const q = search.toLowerCase();
     return (
       l.name.toLowerCase().includes(q) ||
       (l.companyName && l.companyName.toLowerCase().includes(q)) ||
+      (l.company && l.company.toLowerCase().includes(q)) ||
       l.email.toLowerCase().includes(q) ||
-      (l.productTitle && l.productTitle.toLowerCase().includes(q))
+      (l.productTitle && l.productTitle.toLowerCase().includes(q)) ||
+      (l.campaignType && l.campaignType.toLowerCase().includes(q))
     );
   });
 
-  const handleStageChange = async (leadId: string, newStatus: CrmStage) => {
+  const handleStageChange = async (leadId: string, newStatus: LeadStatus) => {
     setUpdatingId(leadId);
 
-    // İyimser UI güncellemesi (Optimistic Update)
+    // İyimser UI güncellemesi
     setLeads((prev) =>
       prev.map((l) => (l.id === leadId ? { ...l, status: newStatus } : l))
     );
@@ -98,10 +110,46 @@ export function CrmKanbanBoard({ initialLeads }: CrmKanbanBoardProps) {
     }
   };
 
-  const getNextStage = (current: CrmStage): CrmStage => {
-    if (current === "PENDING") return "CONTACTED";
-    if (current === "CONTACTED") return "WON";
-    return "PENDING";
+  const handleSendColdMail = async (lead: CrmLead) => {
+    setSendingMailId(lead.id);
+
+    try {
+      const res = await fetch("/api/crm/send-cold-mail", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          leadId: lead.id,
+          campaignType: lead.campaignType || "Nexa ERP",
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setLeads((prev) =>
+          prev.map((l) =>
+            l.id === lead.id
+              ? {
+                  ...l,
+                  status: "EMAILED",
+                  emailCount: (l.emailCount || 0) + 1,
+                  lastEmailedAt: new Date().toISOString(),
+                }
+              : l
+          )
+        );
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSendingMailId(null);
+    }
+  };
+
+  const getNextStage = (current: LeadStatus): LeadStatus => {
+    if (current === "NEW") return "EMAILED";
+    if (current === "EMAILED") return "MEETING_SET";
+    if (current === "MEETING_SET") return "CLOSED";
+    return "NEW";
   };
 
   return (
@@ -123,13 +171,13 @@ export function CrmKanbanBoard({ initialLeads }: CrmKanbanBoardProps) {
           <span>Toplam Talep: <strong className="text-white">{filteredLeads.length}</strong></span>
           <span>&bull;</span>
           <span className="text-emerald-400 font-bold">
-            Kazanılan: {leads.filter((l) => l.status === "WON").length}
+            Kazanılan: {leads.filter((l) => l.status === "CLOSED").length}
           </span>
         </div>
       </div>
 
-      {/* 4 KOLONLU KANBAN BOARD */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5 items-start">
+      {/* 5 KOLONLU KANBAN BOARD */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4 items-start">
         {STAGES.map((col) => {
           const colLeads = filteredLeads.filter((l) => l.status === col.key);
 
@@ -171,10 +219,16 @@ export function CrmKanbanBoard({ initialLeads }: CrmKanbanBoardProps) {
                           <h4 className="text-sm font-bold text-white group-hover:text-cyan-300 transition">
                             {lead.name}
                           </h4>
-                          {lead.companyName && (
+                          {(lead.companyName || lead.company) && (
                             <p className="text-xs text-slate-400 font-medium flex items-center gap-1 mt-0.5">
                               <Building2 className="w-3 h-3 text-slate-500 shrink-0" />
-                              <span className="truncate">{lead.companyName}</span>
+                              <span className="truncate">{lead.companyName || lead.company}</span>
+                            </p>
+                          )}
+                          {lead.jobTitle && (
+                            <p className="text-[11px] text-cyan-400 font-mono flex items-center gap-1 mt-0.5">
+                              <Briefcase className="w-3 h-3 text-cyan-500 shrink-0" />
+                              <span className="truncate">{lead.jobTitle}</span>
                             </p>
                           )}
                         </div>
@@ -186,10 +240,10 @@ export function CrmKanbanBoard({ initialLeads }: CrmKanbanBoardProps) {
                         )}
                       </div>
 
-                      {/* İlgilendiği Ürün */}
-                      {lead.productTitle && (
-                        <div className="mt-3 px-2.5 py-1.5 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 text-xs font-mono">
-                          {lead.productTitle}
+                      {/* İlgilendiği Ürün / Kampanya */}
+                      {(lead.campaignType || lead.productTitle) && (
+                        <div className="mt-3 px-2.5 py-1.5 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 text-xs font-mono font-semibold">
+                          🎯 {lead.campaignType || lead.productTitle}
                         </div>
                       )}
 
@@ -220,8 +274,21 @@ export function CrmKanbanBoard({ initialLeads }: CrmKanbanBoardProps) {
                         )}
                       </div>
 
+                      {/* [Mail Gönder] Aksiyon Butonu */}
+                      <div className="mt-3 pt-2.5 border-t border-slate-800/60 flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleSendColdMail(lead)}
+                          disabled={sendingMailId === lead.id}
+                          className="flex-1 py-1 px-2 rounded-lg bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/30 text-blue-300 text-[11px] font-bold transition flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <Send className="w-3 h-3" />
+                          <span>{sendingMailId === lead.id ? "Gönderiliyor..." : "Mail Gönder"}</span>
+                        </button>
+                      </div>
+
                       {/* Tarih ve Aşama Değiştirme Butonları */}
-                      <div className="mt-3 pt-2.5 border-t border-slate-800/40 flex items-center justify-between text-[11px] font-mono">
+                      <div className="mt-2 pt-2 border-t border-slate-800/40 flex items-center justify-between text-[11px] font-mono">
                         <span className="text-slate-500 flex items-center gap-1">
                           <Clock className="w-3 h-3" />
                           {new Date(lead.createdAt).toLocaleDateString("tr-TR", {
@@ -231,11 +298,11 @@ export function CrmKanbanBoard({ initialLeads }: CrmKanbanBoardProps) {
                         </span>
 
                         <div className="flex items-center gap-1.5">
-                          {lead.status !== "WON" && (
+                          {lead.status !== "CLOSED" && (
                             <button
                               onClick={() => handleStageChange(lead.id, getNextStage(lead.status))}
                               disabled={updatingId === lead.id}
-                              className="px-2.5 py-1 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 font-bold transition flex items-center gap-1 hover:scale-105"
+                              className="px-2 py-0.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 font-bold transition flex items-center gap-1 hover:scale-105"
                               title="Sonraki Aşamaya Taşı"
                             >
                               <span>İlerlet</span>
@@ -245,12 +312,13 @@ export function CrmKanbanBoard({ initialLeads }: CrmKanbanBoardProps) {
 
                           <select
                             value={lead.status}
-                            onChange={(e) => handleStageChange(lead.id, e.target.value as CrmStage)}
+                            onChange={(e) => handleStageChange(lead.id, e.target.value as LeadStatus)}
                             className="bg-slate-900 border border-slate-800 rounded px-1.5 py-0.5 text-[10px] text-slate-300 outline-none"
                           >
-                            <option value="PENDING">Yeni Randevu</option>
-                            <option value="CONTACTED">Mail Gönderildi</option>
-                            <option value="WON">Satış Kapandı</option>
+                            <option value="NEW">Yeni</option>
+                            <option value="EMAILED">Mail Atıldı</option>
+                            <option value="MEETING_SET">Toplantı</option>
+                            <option value="CLOSED">Kapandı</option>
                             <option value="LOST">İptal</option>
                           </select>
                         </div>
@@ -266,4 +334,3 @@ export function CrmKanbanBoard({ initialLeads }: CrmKanbanBoardProps) {
     </div>
   );
 }
-

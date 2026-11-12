@@ -28,20 +28,33 @@ model Content {
   updatedAt       DateTime    @updatedAt
 }
 
+enum LeadStatus {
+  NEW
+  EMAILED
+  MEETING_SET
+  CLOSED
+  LOST
+}
+
 model Lead {
-  id           String   @id @default(cuid())
-  name         String?
-  email        String
-  phone        String?
-  companyName  String?
-  productSlug  String?  // "nexa-erp", "tam-vaktinde", "nexa-pos", "nexa-custom", "ai_token_5"
-  productTitle String?  // "Nexa ERP (İnşaat CDE)", "Tam Vaktinde SaaS"
-  budget       String?
-  notes        String?  @db.Text
-  status       String   @default("PENDING") // "PENDING" (Bekliyor) | "CONTACTED" (Görüşüldü) | "WON" (Satışa Döndü) | "LOST" (İptal)
-  source       String   @default("Strateji_Toplantisi") // "Strateji_Toplantisi" | "Teklif_Iste" | "Bize_Ulasin"
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id            String      @id @default(cuid())
+  name          String?
+  company       String?
+  companyName   String?
+  jobTitle      String?     // Pozisyon / Ünvan (Örn: "CTO", "İnşaat Koordinatörü", "Genel Müdür")
+  email         String
+  phone         String?
+  campaignType  String?     // "Nexa ERP", "Franchise", "POS", "E-Ticaret", "Custom Software"
+  productSlug   String?     // "nexa-erp", "nexa-franchise", "nexa-pos", "nexa-custom", "ai_token_5"
+  productTitle  String?     // "Nexa ERP (İnşaat CDE)", "Tam Vaktinde SaaS"
+  budget        String?
+  notes         String?     @db.Text
+  status        LeadStatus  @default(NEW)
+  source        String      @default("Web Formu") // "PhantomBuster/LinkedIn", "Web Formu", "Manuel", "Make_Webhook"
+  lastEmailedAt DateTime?   // Otonom soğuk mail gönderim zamanı
+  emailCount    Int         @default(0)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
 
   @@index([status, createdAt])
   @@index([email])

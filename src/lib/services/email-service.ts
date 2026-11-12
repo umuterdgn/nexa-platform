@@ -397,3 +397,204 @@ export async function sendB2bEmail(payload: SendEmailPayload): Promise<EmailSend
   }
 }
 
+export interface SendColdMailPayload {
+  to: string;
+  name: string;
+  companyName: string;
+  jobTitle?: string;
+  campaignType?: string; // "Nexa ERP", "Franchise", "POS", "E-Ticaret", "Custom Software"
+  customNote?: string;
+}
+
+/**
+ * B2B Outbound Soğuk E-Posta Şablon Üreticisi
+ * Spam filtrelerine takılmayan, sade, kişiselleştirilmiş ve direkt kurucu ağzından yazılmış metinler.
+ */
+export function generateColdEmailContent(payload: SendColdMailPayload): {
+  subject: string;
+  html: string;
+  text: string;
+} {
+  const name = payload.name?.trim() || "Yetkili";
+  const company = payload.companyName?.trim() || "Şirketiniz";
+  const title = payload.jobTitle?.trim() || "";
+  const campaign = (payload.campaignType || "Nexa ERP").toLowerCase();
+
+  let subject = `${company} süreçleri & Nexa B2B mimarisi hakkında`;
+  let hookParagraph = "";
+  let valuePoints = "";
+
+  if (campaign.includes("erp") || campaign.includes("inşaat") || campaign.includes("santiye")) {
+    subject = `${company} şantiye & hakediş mimarisi hakkında (${name})`;
+    hookParagraph = `${company} bünyesinde ${title ? `${title} olarak ` : ""}yürüttüğünüz şantiye ve taahhüt operasyonlarını yakından takip ediyorum.`;
+    valuePoints = `Geleneksel ERP'lerin sahada internetsiz çalışamaması ve taşeron hakedişlerindeki metraj şişirmeleri inşaat şirketlerinde ciddi kâr erimelerine yol açıyor.
+
+Nexa ERP ile geliştirdiğimiz altyapıda:
+• İnternet olmayan şantiyede dahi kesintisiz veri girişi (%100 Çevrimdışı Dexie.js PWA),
+• 3D/5D BIM modelindeki onaylı sınırları aşan imalatlarda otomatik hakediş blokesi,
+• YİBF ve Türkiye yapı denetim süreçleriyle çift yönlü mutabakat sağlıyoruz.`;
+  } else if (campaign.includes("franchise") || campaign.includes("rollout") || campaign.includes("sube") || campaign.includes("mağaza")) {
+    subject = `${company} şube rollout & denetim süreçleri (${name})`;
+    hookParagraph = `${company} markasının büyüme ve şubeleşme (rollout) operasyonlarını ilgiyle izliyorum.`;
+    valuePoints = `Çoklu mağaza açılışlarında yaşanan taşeron gecikmeleri, teslimat (punch list) QA eksikleri ve şube ciro/royalty takibi büyüme hızını kesebiliyor.
+
+Nexa Franchise ile:
+• Yeni şube açılışlarını harita ve Stage-Gate onay kapılarıyla tek ekrandan yönetme,
+• Mağaza 3D mimari şablonları üzerinden eksiksiz taşeron denetimi,
+• Konsolide satın alma ve anlık şube ciro royalty otomasyonu sunuyoruz.`;
+  } else if (campaign.includes("pos") || campaign.includes("kasa") || campaign.includes("restoran") || campaign.includes("cafe")) {
+    subject = `${company} kasa & operasyon altyapısı (${name})`;
+    hookParagraph = `${company} bünyesindeki perakende / servis noktalarında kasa ve sipariş süreçlerini inceledim.`;
+    valuePoints = `Mevcut yazar kasa ve donanımların hantallığı yoğun saatlerde müşteri kaybına sebep olabiliyor.
+
+Nexa POS ile:
+• STM Yazılım ve Artı POS donanımlarıyla tak-çalıştır entegrasyon,
+• QR Menü, garson el terminali ve mutfak ekranı (KDS) arasında sıfır gecikmeli haberleşme,
+• İnternet kopsa dahi kesintisiz çalışan çevrimdışı bulut kasa mimarisi sağlıyoruz.`;
+  } else if (campaign.includes("ticaret") || campaign.includes("commerce") || campaign.includes("filo") || campaign.includes("lojistik")) {
+    subject = `${company} e-ticaret & filo lojistik mimarisi (${name})`;
+    hookParagraph = `${company} lojistik ve sevkiyat süreçlerini daha verimli kılmak adına sizinle iletişime geçmek istedim.`;
+    valuePoints = `API-first headless altyapımız ile B2B bayi portalı, anlık filo GPS telemetrisi ve teslimat süresini %30 azaltan yapay zeka destekli rota optimizasyonunu tek platformda birleştirdik.`;
+  } else {
+    subject = `${company} x Nexa: Kurumsal SaaS & Entegrasyon (${name})`;
+    hookParagraph = `${company} bünyesindeki ${title ? `${title} pozisyonunuz ve ` : ""}dijital dönüşüm hedeflerinizi yakından inceliyorum.`;
+    valuePoints = `Şirketinizin mevcut SAP, Logo veya şirket içi veri tabanı sistemleriyle çift yönlü çalışan, NeonDB serverless PostgreSQL altyapılı ve %100 kod mülkiyeti şirketinizde kalan terzi işi kurumsal SaaS çözümleri üretiyoruz.`;
+  }
+
+  const text = `
+Merhaba ${name},
+
+${hookParagraph}
+
+${valuePoints}
+
+${payload.customNote ? `\nEk Not: ${payload.customNote}\n` : ""}
+Önümüzdeki günlerde takviminiz uygunsa, ${company} için 15 dakikalık kısa bir canlı teknik demo sunmak isterim. Doğrudan takvimimden size en uygun saati seçebilirsiniz:
+https://nxa.com.tr/randevu
+
+Veya bu e-postayı uygun olduğunuz bir gün ve saati belirterek doğrudan yanıtlayabilirsiniz.
+
+Başarılar dilerim,
+
+Umut Erdoğan
+Kurucu & Sistem Mimarı | Nexa Global
+umut@nxa.com.tr | +90 850 308 6392
+https://nxa.com.tr
+
+---
+Not: Bu bilgilendirme e-postasını almak istemiyorsanız "Listeden Çıkar" yazarak yanıtlamanız yeterlidir.
+`.trim();
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${subject}</title>
+</head>
+<body style="margin: 0; padding: 24px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 15px; line-height: 1.6; color: #1e293b; background-color: #ffffff;">
+  <div style="max-width: 600px; margin: 0 auto;">
+    <p>Merhaba ${name},</p>
+    
+    <p>${hookParagraph}</p>
+    
+    <div style="margin: 20px 0; padding: 18px 20px; background-color: #f8fafc; border-left: 4px solid #0284c7; border-radius: 6px; white-space: pre-line; color: #334155; font-size: 14px; line-height: 1.65;">
+${valuePoints}
+    </div>
+
+    ${payload.customNote ? `<p style="color: #475569; font-style: italic;"><strong>Not:</strong> ${payload.customNote}</p>` : ""}
+
+    <p>Önümüzdeki günlerde takviminiz uygunsa, <strong>${company}</strong> süreçleri için 15 dakikalık kısa bir canlı demo sunmak isterim.</p>
+
+    <p style="margin: 26px 0;">
+      <a href="https://nxa.com.tr/randevu" style="display: inline-block; padding: 12px 24px; background-color: #0f172a; color: #ffffff; text-decoration: none; font-weight: 600; font-size: 14px; border-radius: 8px;">
+        Takvimden 15 Dakikalık Demo Seçin &rarr;
+      </a>
+    </p>
+
+    <p style="font-size: 13px; color: #64748b;">
+      (Veya bu e-postayı uygun olduğunuz gün/saati belirterek doğrudan yanıtlayabilirsiniz.)
+    </p>
+
+    <p style="margin-top: 32px; border-top: 1px solid #e2e8f0; pt-4; font-size: 14px;">
+      Görüşmek dileğiyle,<br>
+      <strong>Umut Erdoğan</strong><br>
+      Kurucu & Sistem Mimarı | Nexa Global<br>
+      <a href="https://nxa.com.tr" style="color: #0284c7; text-decoration: none;">nxa.com.tr</a> &bull; <a href="mailto:umut@nxa.com.tr" style="color: #0284c7; text-decoration: none;">umut@nxa.com.tr</a>
+    </p>
+
+    <p style="margin-top: 24px; font-size: 11px; color: #94a3b8;">
+      Bu e-posta nxa.com.tr Outbound B2B İletişim Motoru tarafından iletilmiştir. Gelecekte e-posta almak istemiyorsanız "Çıkar" yazarak yanıtlamanız yeterlidir.
+    </p>
+  </div>
+</body>
+</html>
+  `.trim();
+
+  return { subject, html, text };
+}
+
+/**
+ * Resend API ile B2B Soğuk Satış E-Postası (Outbound Cold Email) Gönderir
+ */
+export async function sendB2bColdEmail(payload: SendColdMailPayload): Promise<EmailSendResult & { subject?: string }> {
+  const { subject, html, text } = generateColdEmailContent(payload);
+  const apiKey = process.env.RESEND_API_KEY;
+  const fromEmail = process.env.RESEND_FROM_EMAIL || "Umut Erdoğan <umut@nxa.com.tr>";
+
+  if (!apiKey || apiKey === "re_dummy_build_key" || apiKey.startsWith("dummy")) {
+    console.log(`[EmailService] Resend API Key test modunda. Soğuk e-posta simüle edildi:
+    Alıcı: ${payload.to} (${payload.name} / ${payload.companyName})
+    Konu: ${subject}
+    Kampanya: ${payload.campaignType || "Genel"}`);
+
+    return {
+      success: true,
+      messageId: `sim_cold_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+      simulated: true,
+      subject,
+      message: "Soğuk e-posta simülasyonu başarıyla tamamlandı (Dev ortamı).",
+    };
+  }
+
+  try {
+    const resend = new Resend(apiKey);
+    const res = await resend.emails.send({
+      from: fromEmail,
+      to: [payload.to],
+      bcc: ["umut@nxa.com.tr"],
+      replyTo: "umut@nxa.com.tr",
+      subject,
+      html,
+      text,
+    });
+
+    if (res.error) {
+      console.warn("[EmailService] Cold email gönderim hatası:", res.error);
+      return {
+        success: false,
+        messageId: "",
+        subject,
+        message: res.error.message || "Soğuk e-posta gönderilemedi.",
+      };
+    }
+
+    console.log(`[EmailService] Soğuk e-posta iletildi: ID=${res.data?.id}`);
+    return {
+      success: true,
+      messageId: res.data?.id || `msg_${Date.now()}`,
+      subject,
+      message: "Soğuk e-posta başarıyla iletildi.",
+    };
+  } catch (err: any) {
+    console.error("[EmailService] Cold email hatası:", err);
+    return {
+      success: false,
+      messageId: "",
+      subject,
+      message: err?.message || "Soğuk e-posta servisine erişilemedi.",
+    };
+  }
+}
+
