@@ -187,6 +187,23 @@ export async function getContentById(id: string): Promise<IContentItem | null> {
   return current.find((c) => c.id === id) || null;
 }
 
+export async function getContentBySlug(slug: string): Promise<IContentItem | null> {
+  const current = getFallbackContents();
+
+  if (!isDbTemporarilyDown()) {
+    try {
+      const item = await withDbTimeout(
+        prisma.content.findUnique({ where: { slug } })
+      );
+      if (item) return item as IContentItem;
+    } catch {
+      markDbFailure();
+    }
+  }
+
+  return current.find((c) => c.slug === slug) || null;
+}
+
 export async function createContent(data: Omit<IContentItem, "id" | "createdAt" | "updatedAt">): Promise<IContentItem> {
   if (!isDbTemporarilyDown()) {
     try {

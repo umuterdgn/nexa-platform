@@ -598,3 +598,139 @@ export async function sendB2bColdEmail(payload: SendColdMailPayload): Promise<Em
   }
 }
 
+export interface SendLeadFollowUpEmailPayload {
+  to: string;
+  name: string;
+  company?: string;
+  requestedProduct?: string;
+  message?: string;
+}
+
+/**
+ * Müşteri taleplerine (Strateji Toplantısı, Demo İste, Web Formu) kurumsal
+ * "Talebiniz alınmıştır, [Ürün] için size en kısa sürede ulaşacağız" e-postası gönderir.
+ */
+export async function sendLeadFollowUpEmail(payload: SendLeadFollowUpEmailPayload): Promise<EmailSendResult & { subject?: string }> {
+  const name = payload.name || "Değerli Müşterimiz";
+  const company = payload.company || "Şirketiniz";
+  const product = payload.requestedProduct || "Nexa Kurumsal Çözümleri";
+  const subject = `Talebiniz Alındı: ${product} | Nexa B2B Sistemleri`;
+  const currentYear = new Date().getFullYear();
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${subject}</title>
+</head>
+<body style="margin: 0; padding: 24px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 15px; line-height: 1.6; color: #1e293b; background-color: #ffffff;">
+  <div style="max-width: 620px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; padding: 32px; background-color: #ffffff;">
+    <div style="margin-bottom: 24px; border-bottom: 2px solid #0284c7; padding-bottom: 12px;">
+      <span style="font-size: 11px; font-family: monospace; font-weight: bold; color: #0284c7; text-transform: uppercase; letter-spacing: 2px;">NEXA B2B ENTERPRISE ARCHITECTURE</span>
+      <h2 style="margin: 6px 0 0 0; font-size: 20px; color: #0f172a;">Talebiniz Alınmıştır</h2>
+    </div>
+
+    <p style="font-size: 16px; color: #0f172a;">Sayın <strong>${name}</strong>,</p>
+    
+    <p><strong>${company}</strong> adına iletmiş olduğunuz <strong>${product}</strong> talebiniz ve sistem ön değerlendirme kaydınız Nexa mühendislik ekibimiz tarafından başarıyla alınmıştır.</p>
+    
+    <div style="margin: 22px 0; padding: 18px 20px; background-color: #f8fafc; border-left: 4px solid #0284c7; border-radius: 6px;">
+      <p style="margin: 0 0 8px 0; font-weight: 600; color: #0f172a; font-size: 15px;">Ön Kayıt Özeti:</p>
+      <ul style="margin: 0; padding-left: 20px; color: #334155; font-size: 14px;">
+        <li style="margin-bottom: 6px;"><strong>İlgilenilen Ürün/Çözüm:</strong> ${product}</li>
+        <li style="margin-bottom: 6px;"><strong>Kurum:</strong> ${company}</li>
+        ${payload.message ? `<li style="margin-bottom: 6px;"><strong>İletilen Proje Notu:</strong> ${payload.message}</li>` : ""}
+        <li><strong>Durum:</strong> Değerlendirmede &bull; Öncelikli Randevu Sırasında</li>
+      </ul>
+    </div>
+
+    <p style="font-weight: 600; color: #0f172a; font-size: 15px;">
+      Talebiniz alınmıştır, <strong>${product}</strong> için size en kısa sürede ulaşacağız.
+    </p>
+
+    <p style="color: #475569;">
+      Bu süreçte şantiyelerinizde/operasyonlarınızda %100 çevrimdışı (offline-first PWA) çalışma, Dexie.js veri tutarlılığı veya mevcut ERP entegrasyonu (SAP, Mikro, Logo vb.) ihtiyaçlarınızı doğrudan inceleyip şirketinize özel teknik mimari yol haritası ile birlikte döneceğiz.
+    </p>
+
+    <p style="margin: 28px 0;">
+      <a href="https://nxa.com.tr/randevu" style="display: inline-block; padding: 12px 24px; background-color: #0f172a; color: #ffffff; text-decoration: none; font-weight: 600; font-size: 14px; border-radius: 8px;">
+        Görüşmeyi Takvimden Şimdi Netleştirin &rarr;
+      </a>
+    </p>
+
+    <p style="margin-top: 36px; border-top: 1px solid #e2e8f0; padding-top: 16px; font-size: 14px; color: #334155;">
+      Saygılarımızla,<br>
+      <strong>Umut Erdoğan</strong><br>
+      Kurucu & Sistem Mimarı | Nexa Global<br>
+      <a href="https://nxa.com.tr" style="color: #0284c7; text-decoration: none;">nxa.com.tr</a> &bull; <a href="mailto:umut@nxa.com.tr" style="color: #0284c7; text-decoration: none;">umut@nxa.com.tr</a>
+    </p>
+
+    <hr style="border: 0; border-top: 1px solid #f1f5f9; margin: 28px 0 12px 0;" />
+    <p style="font-size: 11px; color: #94a3b8; margin: 0;">
+      Bu bilgilendirme e-postası nxa.com.tr CRM otomasyon motoru tarafından iletilmiştir. © ${currentYear} Nexa Yazılım & B2B SaaS Ekosistemleri.
+    </p>
+  </div>
+</body>
+</html>
+  `.trim();
+
+  const text = `Sayın ${name},\n\n${company} adına iletmiş olduğunuz ${product} talebiniz ve sistem ön değerlendirme kaydınız başarıyla alınmıştır.\n\nTalebiniz alınmıştır, ${product} için size en kısa sürede ulaşacağız.\n\nUmut Erdoğan\nKurucu & Sistem Mimarı | Nexa Global\nhttps://nxa.com.tr`;
+
+  const apiKey = process.env.RESEND_API_KEY;
+  const fromEmail = process.env.RESEND_FROM_EMAIL || "Umut Erdoğan <umut@nxa.com.tr>";
+
+  if (!apiKey || apiKey === "re_dummy_build_key" || apiKey.startsWith("dummy")) {
+    console.log(`[EmailService] Resend API Key test modunda. Talep onay e-postası simüle edildi:
+    Alıcı: ${payload.to} (${name} / ${company})
+    Ürün: ${product}`);
+
+    return {
+      success: true,
+      messageId: `sim_lead_ack_${Date.now()}`,
+      simulated: true,
+      subject,
+      message: "Talebiniz alınmıştır konulu kurumsal e-posta başarıyla iletildi (Simülasyon).",
+    };
+  }
+
+  try {
+    const resend = new Resend(apiKey);
+    const res = await resend.emails.send({
+      from: fromEmail,
+      to: [payload.to],
+      bcc: ["umut@nxa.com.tr"],
+      replyTo: "umut@nxa.com.tr",
+      subject,
+      html,
+      text,
+    });
+
+    if (res.error) {
+      console.warn("[EmailService] Lead follow-up email hatası:", res.error);
+      return {
+        success: false,
+        messageId: "",
+        subject,
+        message: res.error.message || "E-posta gönderilemedi.",
+      };
+    }
+
+    return {
+      success: true,
+      messageId: res.data?.id || `msg_${Date.now()}`,
+      subject,
+      message: "Talebiniz alınmıştır konulu kurumsal e-posta başarıyla iletildi.",
+    };
+  } catch (err: any) {
+    console.error("[EmailService] Lead follow-up hatası:", err);
+    return {
+      success: false,
+      messageId: "",
+      subject,
+      message: err?.message || "E-posta servisine erişilemedi.",
+    };
+  }
+}
+

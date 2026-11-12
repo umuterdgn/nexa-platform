@@ -2,14 +2,15 @@ import { prisma } from "@/lib/prisma";
 import { connectMongoDB } from "@/lib/mongodb";
 import { Quote } from "@/models/Quote";
 
-export type LeadStatus = "NEW" | "EMAILED" | "MEETING_SET" | "CLOSED" | "LOST";
-export type CrmStage = LeadStatus | "PENDING" | "CONTACTED" | "WON";
+export type LeadStatus = "NEW" | "CONTACTED" | "EMAILED" | "MEETING_SET" | "CLOSED" | "LOST";
+export type CrmStage = LeadStatus | "PENDING" | "WON";
 
 export function normalizeLeadStatus(status?: string): LeadStatus {
   if (!status) return "NEW";
   const upper = status.toUpperCase();
   if (upper === "NEW" || upper === "PENDING") return "NEW";
-  if (upper === "EMAILED" || upper === "CONTACTED") return "EMAILED";
+  if (upper === "CONTACTED") return "CONTACTED";
+  if (upper === "EMAILED") return "EMAILED";
   if (upper === "MEETING_SET") return "MEETING_SET";
   if (upper === "CLOSED" || upper === "WON") return "CLOSED";
   if (upper === "LOST") return "LOST";
@@ -27,6 +28,8 @@ export interface CrmLead {
   campaignType?: string;
   productSlug?: string;
   productTitle?: string;
+  requestedProduct?: string;
+  message?: string;
   budget?: string;
   notes?: string;
   status: LeadStatus;
@@ -156,7 +159,7 @@ function getMemoryLeads(): CrmLead[] {
 export async function getAllCrmLeads(): Promise<CrmLead[]> {
   const result: CrmLead[] = [];
 
-  // 1. Prisma Kontrolü
+  // 1. Prisma Kontrolü (Lead ve ContactRequest)
   try {
     const prismaLeads = await (prisma as any).lead?.findMany({
       orderBy: { createdAt: "desc" },
@@ -175,8 +178,10 @@ export async function getAllCrmLeads(): Promise<CrmLead[]> {
           campaignType: pl.campaignType || pl.productTitle || "Nexa ERP",
           productSlug: pl.productSlug || undefined,
           productTitle: pl.productTitle || pl.campaignType || pl.productSlug || undefined,
+          requestedProduct: pl.requestedProduct || pl.campaignType || undefined,
+          message: pl.message || pl.notes || undefined,
           budget: pl.budget || undefined,
-          notes: pl.notes || undefined,
+          notes: pl.notes || pl.message || undefined,
           status: normalizeLeadStatus(pl.status),
           source: pl.source || "Web Formu",
           lastEmailedAt: pl.lastEmailedAt ? new Date(pl.lastEmailedAt).toISOString() : undefined,
@@ -188,6 +193,42 @@ export async function getAllCrmLeads(): Promise<CrmLead[]> {
     }
   } catch (err) {
     console.warn("[CrmService] Prisma sorgu uyarısı:", err);
+  }
+
+  // 1.1 Prisma ContactRequest Kontrolü (Demo & Strateji Formları)
+  try {
+    const contactRequests = await (prisma as any).contactRequest?.findMany({
+      orderBy: { createdAt: "desc" },
+    });
+
+    if (contactRequests && contactRequests.length > 0) {
+      for (const cr of contactRequests) {
+        if (!result.some((r) => r.id === cr.id || r.email.toLowerCase() === cr.email.toLowerCase())) {
+          result.push({
+            id: cr.id,
+            name: cr.name || cr.email.split("@")[0],
+            email: cr.email,
+            phone: cr.phone || undefined,
+            company: cr.company || undefined,
+            companyName: cr.company || undefined,
+            jobTitle: undefined,
+            campaignType: cr.requestedProduct || "Nexa ERP",
+            productSlug: undefined,
+            productTitle: cr.requestedProduct || "Nexa Kurumsal Talep",
+            requestedProduct: cr.requestedProduct || undefined,
+            message: cr.message || undefined,
+            notes: cr.message || undefined,
+            status: normalizeLeadStatus(cr.status),
+            source: "Web Formu / Demo Talebi",
+            emailCount: 0,
+            createdAt: new Date(cr.createdAt).toISOString(),
+            updatedAt: new Date(cr.updatedAt).toISOString(),
+          });
+        }
+      }
+    }
+  } catch (err) {
+    // ContactRequest tablosu henüz yoksa sorunsuz geç
   }
 
   // 2. Mongoose / Quote Kontrolü (Legacy teklif formlarını CRM'e senkronize eder)
@@ -260,6 +301,8 @@ export async function findCrmLeadById(leadId: string): Promise<CrmLead | null> {
         campaignType: pl.campaignType || "Nexa ERP",
         productSlug: pl.productSlug || undefined,
         productTitle: pl.productTitle || undefined,
+        requestedProduct: pl.requestedProduct || pl.campaignType || undefined,
+        message: pl.message || pl.notes || undefined,
         budget: pl.budget || undefined,
         notes: pl.notes || undefined,
         status: normalizeLeadStatus(pl.status),
@@ -268,6 +311,34 @@ export async function findCrmLeadById(leadId: string): Promise<CrmLead | null> {
         emailCount: pl.emailCount ?? 0,
         createdAt: new Date(pl.createdAt).toISOString(),
         updatedAt: new Date(pl.updatedAt).toISOString(),
+      };
+    }
+  } catch (e) {
+    // Devam
+  }
+
+  try {
+    const cr = await (prisma as any).contactRequest?.findUnique({
+      where: { id: leadId },
+    });
+    if (cr) {
+      return {
+        id: cr.id,
+        name: cr.name || cr.email.split("@")[0],
+        email: cr.email,
+        phone: cr.phone || undefined,
+        company: cr.company || undefined,
+        companyName: cr.company || undefined,
+        campaignType: cr.requestedProduct || "Nexa ERP",
+        productTitle: cr.requestedProduct || undefined,
+        requestedProduct: cr.requestedProduct || undefined,
+        message: cr.message || undefined,
+        notes: cr.message || undefined,
+        status: normalizeLeadStatus(cr.status),
+        source: "Web Formu / Demo Talebi",
+        emailCount: 0,
+        createdAt: new Date(cr.createdAt).toISOString(),
+        updatedAt: new Date(cr.updatedAt).toISOString(),
       };
     }
   } catch (e) {
@@ -308,6 +379,19 @@ export async function updateLeadStage(
     if (updated) {
       console.log(`[CrmService] Prisma Lead güncellendi: ${leadId} -> ${normalized}`);
     }
+  } catch (err) {
+    // Devam et
+  }
+
+  // 1.1 Prisma ContactRequest güncellemesi
+  try {
+    await (prisma as any).contactRequest?.update({
+      where: { id: leadId },
+      data: {
+        status: normalized,
+        updatedAt: new Date(),
+      },
+    });
   } catch (err) {
     // Devam et
   }
@@ -356,18 +440,22 @@ export async function createCrmLead(data: {
   campaignType?: string;
   productSlug?: string;
   productTitle?: string;
+  requestedProduct?: string;
+  message?: string;
   budget?: string;
   notes?: string;
   source?: string;
   status?: CrmStage;
 }): Promise<CrmLead> {
   const cleanCompany = data.company || data.companyName || "Belirtilmemiş Kurum";
-  const cleanCampaign = data.campaignType || data.productTitle || "Nexa ERP";
+  const cleanCampaign = data.campaignType || data.productTitle || data.requestedProduct || "Nexa ERP";
+  const requestedProd = data.requestedProduct || data.campaignType || data.productTitle || "Nexa ERP";
+  const contentMessage = data.message || data.notes;
   const normalizedStatus = normalizeLeadStatus(data.status || "NEW");
 
   let createdId = `lead_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
 
-  // Prisma Kaydı
+  // 1. Prisma Lead Kaydı
   try {
     const prismaCreated = await (prisma as any).lead?.create({
       data: {
@@ -380,8 +468,10 @@ export async function createCrmLead(data: {
         campaignType: cleanCampaign,
         productSlug: data.productSlug,
         productTitle: data.productTitle || cleanCampaign,
+        requestedProduct: requestedProd,
+        message: contentMessage,
         budget: data.budget,
-        notes: data.notes,
+        notes: data.notes || data.message,
         status: normalizedStatus,
         source: data.source || "Web Formu",
       },
@@ -392,6 +482,23 @@ export async function createCrmLead(data: {
     }
   } catch (e) {
     console.warn("[CrmService] Prisma yeni lead kayıt uyarısı:", e);
+  }
+
+  // 2. Prisma ContactRequest Senkronizasyonu (Geriye Dönük Uyumluluk)
+  try {
+    await (prisma as any).contactRequest?.create({
+      data: {
+        name: data.name,
+        email: data.email.trim().toLowerCase(),
+        phone: data.phone,
+        company: cleanCompany,
+        requestedProduct: requestedProd,
+        message: contentMessage,
+        status: normalizedStatus,
+      },
+    });
+  } catch (e) {
+    // ContactRequest henüz yoksa hata basmadan devam et
   }
 
   const newLead: CrmLead = {
@@ -405,8 +512,10 @@ export async function createCrmLead(data: {
     campaignType: cleanCampaign,
     productSlug: data.productSlug,
     productTitle: data.productTitle || cleanCampaign,
+    requestedProduct: requestedProd,
+    message: contentMessage,
     budget: data.budget,
-    notes: data.notes,
+    notes: data.notes || data.message,
     status: normalizedStatus,
     source: data.source || "Web Formu",
     emailCount: 0,

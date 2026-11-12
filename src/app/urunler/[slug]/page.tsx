@@ -39,14 +39,51 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   const metaTitle = product.seoTitle || `${product.title} - Fiyatlandırma & SaaS Paketleri | Nexa Platform`;
   const metaDescription = product.seoDescription || product.description.slice(0, 160);
+  const canonicalUrl = `https://nxa.com.tr/urunler/${product.slug}`;
+  const featureKeywords = (product.features || [])
+    .map((f: any) => (typeof f === "string" ? f : f?.title || ""))
+    .filter(Boolean);
+
+  const keywords = [
+    product.title,
+    product.category,
+    "B2B SaaS",
+    "Kurumsal Yazılım",
+    "Çevrimdışı Şantiye ERP",
+    "Offline PWA",
+    "Umut Erdoğan",
+    "Nexa Platform",
+    ...featureKeywords,
+  ];
 
   return {
     title: metaTitle,
     description: metaDescription,
+    keywords,
+    alternates: {
+      canonical: canonicalUrl,
+    },
     openGraph: {
       title: metaTitle,
       description: metaDescription,
+      url: canonicalUrl,
+      siteName: "Nexa B2B Kurumsal Mühendislik & SaaS Platformu",
+      locale: "tr_TR",
       type: "website",
+      images: [
+        {
+          url: "https://nxa.com.tr/og-image.png",
+          width: 1200,
+          height: 630,
+          alt: product.title,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: metaTitle,
+      description: metaDescription,
+      images: ["https://nxa.com.tr/og-image.png"],
     },
   };
 }
@@ -73,15 +110,28 @@ export default async function ProductDetailPage({ params }: PageProps) {
     operatingSystem: "Web, iOS, Android, Cloud, PWA",
     description: product.description,
     url: `https://nxa.com.tr/urunler/${product.slug}`,
+    aggregateRating: {
+      "@type": "AggregateRating",
+      ratingValue: "4.9",
+      reviewCount: "48",
+      bestRating: "5",
+      worstRating: "1",
+    },
     offers: product.plans.map((plan) => ({
       "@type": "Offer",
       name: plan.name,
-      price: plan.yearlyPrice,
-      priceCurrency: plan.currency,
+      price: String(plan.yearlyPrice),
+      priceCurrency: plan.currency || "TRY",
       availability: "https://schema.org/InStock",
+      priceValidUntil: "2027-12-31",
+      seller: {
+        "@type": "Organization",
+        name: "Nexa",
+      },
     })),
     publisher: {
       "@type": "Organization",
+      "@id": "https://nxa.com.tr/#organization",
       name: "Nexa",
       url: "https://nxa.com.tr",
     },

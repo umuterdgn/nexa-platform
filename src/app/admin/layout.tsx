@@ -36,12 +36,7 @@ export default async function AdminLayout({
     },
     {
       href: "/admin/crm",
-      label: "Otonom Satış & CRM",
-      icon: <Send size={18} />,
-    },
-    {
-      href: "/admin/teklifler",
-      label: "Gelen Teklifler (Kanban)",
+      label: "CRM & Teklifler (Kanban)",
       icon: <Target size={18} />,
     },
     {

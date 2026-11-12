@@ -139,10 +139,74 @@ const softwareApplicationSchemas = {
   ],
 };
 
+/**
+ * 3. Nexa Organization Şeması (Otorite, Kurucu ve Marka Bilgisi)
+ */
+const organizationSchema = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "@id": "https://nxa.com.tr/#organization",
+  name: "Nexa B2B SaaS & Kurumsal Platform",
+  alternateName: ["Nexa", "Nexa Platform", "Nexa Global"],
+  url: "https://nxa.com.tr",
+  logo: "https://nxa.com.tr/icon.png",
+  description: "Şantiye ERP, Franchise Rollout, Restoran POS ve Headless E-Ticaret için yeni nesil B2B SaaS çözümleri.",
+  founder: {
+    "@type": "Person",
+    name: "Umut Erdoğan",
+    jobTitle: "Kurucu & Sistem Mimarı",
+    url: "https://nxa.com.tr",
+  },
+  contactPoint: {
+    "@type": "ContactPoint",
+    contactType: "Customer Support & Sales",
+    email: "info@nxa.com.tr",
+    telephone: "+90-500-000-0000",
+    areaServed: "TR",
+    availableLanguage: ["Turkish", "English"],
+  },
+  sameAs: [
+    "https://github.com/umuterdgn",
+  ],
+};
+
+/**
+ * 4. Nexa WebSite Şeması (Site Arama ve Ana Varlık)
+ */
+const webSiteSchema = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "@id": "https://nxa.com.tr/#website",
+  url: "https://nxa.com.tr",
+  name: "Nexa Platform",
+  alternateName: "Nexa B2B Kurumsal Mühendislik",
+  description: "Şantiye ERP, Franchise Rollout, Bulut POS ve Headless E-Ticaret Platformu.",
+  publisher: {
+    "@id": "https://nxa.com.tr/#organization",
+  },
+  potentialAction: {
+    "@type": "SearchAction",
+    target: "https://nxa.com.tr/urunler?q={search_term_string}",
+    "query-input": "required name=search_term_string",
+  },
+};
+
 export default function HomePage() {
   return (
     <MainLayout>
       {/* Sunucu Tarafı GEO / SEO Yapısal Veri Enjeksiyonu */}
+      <script
+        id="org-schema-ldjson"
+        type="application/ld+json"
+        suppressHydrationWarning
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}
+      />
+      <script
+        id="website-schema-ldjson"
+        type="application/ld+json"
+        suppressHydrationWarning
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(webSiteSchema) }}
+      />
       <script
         id="faq-schema-ldjson"
         type="application/ld+json"

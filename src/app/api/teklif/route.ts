@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { connectMongoDB } from "@/lib/mongodb";
 import { Quote } from "@/models/Quote";
+import { createCrmLead } from "@/lib/services/crm-service";
 
 const resend = new Resend(process.env.RESEND_API_KEY || "re_dummy_build_key");
 
@@ -14,16 +15,43 @@ export async function POST(req: Request) {
     const email = formData.get("email") as string;
     const phone = formData.get("phone") as string;
     const details = formData.get("details") as string;
+    const company = (formData.get("company") as string) || name || "Belirtilmemiş Şirket";
+    const requestedProduct = (formData.get("requestedProduct") as string) || "Nexa Özel Proje & Teklif";
     const file = formData.get("file") as File | null;
 
-    // 1. Veritabanına Kaydet (Admin Paneli için)
-    await connectMongoDB();
-    await Quote.create({
-      name,
-      email: email || "Belirtilmedi",
-      phone: phone || "Belirtilmedi",
-      details,
-    });
+    // 1. Prisma CRM & ContactRequest Modeline Kaydet (Admin Paneli / CRM için)
+    try {
+      await createCrmLead({
+        name: name || "İsimsiz Talep",
+        email: email || "iletisim@musteri.com",
+        phone: phone || undefined,
+        company: company,
+        companyName: company,
+        requestedProduct: requestedProduct,
+        campaignType: requestedProduct,
+        message: details,
+        notes: details,
+        source: "Web Formu / Teklif Talebi",
+        status: "NEW",
+      });
+    } catch (crmErr) {
+      console.warn("[Teklif API] CRM Lead kayıt uyarısı:", crmErr);
+    }
+
+    // 2. Mongoose (Legacy Veritabanı) Kaydet
+    try {
+      await connectMongoDB();
+      await Quote.create({
+        name,
+        email: email || "Belirtilmedi",
+        phone: phone || "Belirtilmedi",
+        company,
+        serviceType: requestedProduct,
+        details,
+      });
+    } catch (mongoErr) {
+      console.warn("[Teklif API] Mongo kayıt uyarısı:", mongoErr);
+    }
 
     let attachments = [];
 

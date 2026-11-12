@@ -52,6 +52,13 @@ const STAGES: {
     borderHover: "hover:border-amber-500/50",
   },
   {
+    key: "CONTACTED",
+    title: "İletişime Geçildi",
+    badgeClass: "bg-cyan-500/10 text-cyan-400 border-cyan-500/30",
+    dotColor: "bg-cyan-400",
+    borderHover: "hover:border-cyan-500/50",
+  },
+  {
     key: "EMAILED",
     title: "Mail Gönderildi",
     badgeClass: "bg-blue-500/10 text-blue-400 border-blue-500/30",
@@ -154,12 +161,13 @@ export function CrmDashboardClient({ initialLeads }: Props) {
   const metrics = useMemo(() => {
     const total = leads.length;
     const newCount = leads.filter((l) => l.status === "NEW").length;
+    const contactedCount = leads.filter((l) => l.status === "CONTACTED").length;
     const emailedCount = leads.filter((l) => l.status === "EMAILED").length;
     const meetingCount = leads.filter((l) => l.status === "MEETING_SET").length;
     const closedCount = leads.filter((l) => l.status === "CLOSED").length;
     const conversionRate = total > 0 ? Math.round((closedCount / total) * 100) : 0;
 
-    return { total, newCount, emailedCount, meetingCount, closedCount, conversionRate };
+    return { total, newCount, contactedCount, emailedCount, meetingCount, closedCount, conversionRate };
   }, [leads]);
 
   // Aşama Değiştirme
@@ -182,6 +190,55 @@ export function CrmDashboardClient({ initialLeads }: Props) {
       console.error("Aşama güncellenemedi:", err);
     } finally {
       setUpdatingId(null);
+    }
+  };
+
+  // Otomatik Kurumsal Mail Yolla (B2B Lead Follow-Up via /api/admin/send-lead-email)
+  const handleSendLeadAckEmail = async (lead: CrmLead) => {
+    setSendingMailId(lead.id);
+
+    try {
+      const res = await fetch("/api/admin/send-lead-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          leadId: lead.id,
+          email: lead.email,
+          name: lead.name,
+          company: lead.company || lead.companyName,
+          requestedProduct: lead.requestedProduct || lead.campaignType || lead.productTitle || "Nexa ERP",
+          message: lead.message || lead.notes,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        setLeads((prev) =>
+          prev.map((l) =>
+            l.id === lead.id
+              ? {
+                  ...l,
+                  status: "CONTACTED",
+                  emailCount: (l.emailCount || 0) + 1,
+                  lastEmailedAt: new Date().toISOString(),
+                }
+              : l
+          )
+        );
+        showToast(
+          data.simulated
+            ? `(Simülasyon) ${lead.name} kişisine 'Talebiniz Alındı' kurumsal maili iletildi ve durum CONTACTED yapıldı.`
+            : `${lead.email} adresine kurumsal e-posta başarıyla iletildi. Durum: CONTACTED (İletişime Geçildi).`
+        );
+      } else {
+        alert(data.error || "E-posta gönderimi başarısız oldu.");
+      }
+    } catch (err) {
+      console.error("Otomatik mail gönderme hatası:", err);
+      alert("Sunucu bağlantı hatası oluştu.");
+    } finally {
+      setSendingMailId(null);
     }
   };
 
@@ -373,6 +430,7 @@ export function CrmDashboardClient({ initialLeads }: Props) {
             >
               <option value="Tümü">Tümü</option>
               <option value="NEW">Yeni</option>
+              <option value="CONTACTED">İletişime Geçildi</option>
               <option value="EMAILED">Mail Gönderildi</option>
               <option value="MEETING_SET">Toplantı Alındı</option>
               <option value="CLOSED">Satış Kapandı</option>
@@ -567,28 +625,28 @@ export function CrmDashboardClient({ initialLeads }: Props) {
                             )}
                           </div>
 
-                          {/* ÖNEMLİ AKSİYON: [Mail Gönder (Tetikle)] & Aşama */}
+                          {/* ÖNEMLİ AKSİYON: [Otomatik Mail Yolla] & Aşama */}
                           <div className="mt-3 pt-2.5 border-t border-slate-800/80 flex items-center justify-between gap-2">
                             <button
                               type="button"
-                              onClick={() => handleSendColdMail(lead)}
+                              onClick={() => handleSendLeadAckEmail(lead)}
                               disabled={isSending}
                               className={`flex-1 py-1.5 px-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-sm ${
-                                lead.status === "EMAILED"
-                                  ? "bg-slate-800 hover:bg-slate-700 text-blue-300 border border-blue-500/30"
-                                  : "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-blue-500/20"
+                                lead.status === "CONTACTED"
+                                  ? "bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-cyan-500/30"
+                                  : "bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white shadow-cyan-500/20"
                               }`}
-                              title="Resend üzerinden kişiselleştirilmiş soğuk mail fırlat"
+                              title="Resend üzerinden 'Talebiniz alınmıştır' kurumsal e-postasını gönder ve aşamayı CONTACTED yap"
                             >
                               {isSending ? (
                                 <>
                                   <RefreshCw className="w-3 h-3 animate-spin" />
-                                  <span>Atılıyor...</span>
+                                  <span>İletiliyor...</span>
                                 </>
                               ) : (
                                 <>
                                   <Send className="w-3 h-3" />
-                                  <span>{lead.emailCount > 0 ? "Tekrar Mail At" : "Mail Gönder"}</span>
+                                  <span>{lead.status === "CONTACTED" ? "Tekrar Mail Yolla" : "Otomatik Mail Yolla"}</span>
                                 </>
                               )}
                             </button>
@@ -599,6 +657,7 @@ export function CrmDashboardClient({ initialLeads }: Props) {
                               className="bg-slate-900 border border-slate-800 rounded-lg px-2 py-1.5 text-[11px] text-slate-300 font-mono outline-none"
                             >
                               <option value="NEW">Yeni</option>
+                              <option value="CONTACTED">İletişime Geçildi</option>
                               <option value="EMAILED">Mail Atıldı</option>
                               <option value="MEETING_SET">Toplantı</option>
                               <option value="CLOSED">Kapandı</option>
@@ -685,7 +744,8 @@ export function CrmDashboardClient({ initialLeads }: Props) {
                             className="bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-1.5 text-xs font-mono text-white outline-none focus:border-cyan-500"
                           >
                             <option value="NEW">Yeni (NEW)</option>
-                            <option value="EMAILED">Mail Atıldı (EMAILED)</option>
+                            <option value="CONTACTED">İletişime Geçildi (CONTACTED)</option>
+                            <option value="EMAILED">Soğuk Mail (EMAILED)</option>
                             <option value="MEETING_SET">Toplantı Alındı (MEETING_SET)</option>
                             <option value="CLOSED">Satış Kapandı (CLOSED)</option>
                             <option value="LOST">Kayıp (LOST)</option>
@@ -696,8 +756,8 @@ export function CrmDashboardClient({ initialLeads }: Props) {
                         <td className="py-4 px-6 text-xs font-mono">
                           {lead.emailCount > 0 ? (
                             <div>
-                              <span className="text-blue-400 font-bold flex items-center gap-1">
-                                <CheckCircle2 className="w-3.5 h-3.5 text-blue-400" />
+                              <span className="text-cyan-400 font-bold flex items-center gap-1">
+                                <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400" />
                                 {lead.emailCount} kez gönderildi
                               </span>
                               {lead.lastEmailedAt && (
@@ -716,20 +776,21 @@ export function CrmDashboardClient({ initialLeads }: Props) {
                           <div className="flex items-center justify-end gap-2">
                             <button
                               type="button"
-                              onClick={() => handleSendColdMail(lead)}
+                              onClick={() => handleSendLeadAckEmail(lead)}
                               disabled={isSending}
                               className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
-                                lead.status === "EMAILED"
-                                  ? "bg-slate-800 hover:bg-slate-700 text-blue-300 border border-blue-500/30"
-                                  : "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-md shadow-blue-500/20"
+                                lead.status === "CONTACTED"
+                                  ? "bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-cyan-500/30"
+                                  : "bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white shadow-md shadow-cyan-500/20"
                               }`}
+                              title="Resend üzerinden 'Talebiniz alınmıştır' e-postasını gönder ve aşamayı CONTACTED yap"
                             >
                               {isSending ? (
                                 <RefreshCw className="w-3.5 h-3.5 animate-spin" />
                               ) : (
                                 <Send className="w-3.5 h-3.5" />
                               )}
-                              <span>Mail Gönder</span>
+                              <span>{lead.status === "CONTACTED" ? "Tekrar Mail Yolla" : "Otomatik Mail Yolla"}</span>
                             </button>
 
                             <button
