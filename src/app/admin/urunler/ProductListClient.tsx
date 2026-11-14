@@ -133,7 +133,34 @@ import type { PricingType } from "@/types/saas";
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/80">
-              {filteredProducts.length === 0 ? (
+              {products.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="py-16 px-6 text-center">
+                    <div className="max-w-md mx-auto space-y-4">
+                      <div className="mx-auto w-14 h-14 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-center text-cyan-400">
+                        <Layers className="w-6 h-6" />
+                      </div>
+                      <div className="space-y-1">
+                        <h3 className="text-base font-bold text-white">
+                          Henüz veri bulunmuyor
+                        </h3>
+                        <p className="text-xs text-slate-400">
+                          Henüz veri bulunmuyor. Yeni bir kayıt eklemek için butona tıklayın.
+                        </p>
+                      </div>
+                      <div className="pt-2">
+                        <Link
+                          href="/admin/urun-ekle"
+                          className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 px-5 py-2.5 text-xs font-bold text-white shadow-lg shadow-cyan-500/20 hover:from-cyan-400 hover:to-blue-500 transition"
+                        >
+                          <Plus className="w-4 h-4" />
+                          <span>Yeni Ürün / SSO Ekle</span>
+                        </Link>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              ) : filteredProducts.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="py-12 text-center text-slate-500 text-xs font-mono">
                     Bu filtreye uygun ürün bulunamadı.

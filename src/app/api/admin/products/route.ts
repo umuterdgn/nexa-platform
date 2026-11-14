@@ -6,7 +6,6 @@ import { prisma } from "@/lib/prisma";
 import { connectMongoDB } from "@/lib/mongodb";
 import { Product as MongoProduct } from "@/models/Product";
 import { buildPricingFromLegacy } from "@/lib/product-pricing";
-import { DEFAULT_SAAS_CATALOG } from "@/lib/services/product-service";
 
 function slugify(text: string): string {
   return text
@@ -49,7 +48,7 @@ function resolveBusinessId(session: {
           whereClause.category = categoryParam;
         }
 
-        products = await (prisma as any).product.findMany({
+        products = await prisma.product.findMany({
           where: whereClause,
           include: {
             plans: true,
@@ -58,15 +57,7 @@ function resolveBusinessId(session: {
           orderBy: { createdAt: "desc" },
         });
       } catch (dbErr) {
-        console.warn("[Admin Product API] Prisma get hatası, mock kataloğa dönülüyor:", dbErr);
-      }
-
-      // Prisma'da henüz ürün yoksa amiral seed kataloğunu döner
-      if (!products || products.length === 0) {
-        const fallbackList = Object.values(DEFAULT_SAAS_CATALOG);
-        products = (categoryParam && categoryParam !== "all" && categoryParam !== "Tümü")
-          ? fallbackList.filter((p) => p.category === categoryParam)
-          : fallbackList;
+        console.warn("[Admin Product API] Prisma get hatası:", dbErr);
       }
 
       return NextResponse.json({ success: true, products });
@@ -213,40 +204,9 @@ function resolveBusinessId(session: {
           // MongoDB offline ise sessizce devam eder
         }
 
-        // 4. In-Memory Katalog Senkronizasyonu
-        DEFAULT_SAAS_CATALOG[cleanSlug] = {
-          id: prismaProduct?.id || `prod_${cleanSlug}`,
-          slug: cleanSlug,
-          title: body.title,
-          tagline,
-          description: body.description,
-          badge,
-          category,
-          pricingType,
-          seoTitle: seoTitle || undefined,
-          seoDescription: seoDescription || undefined,
-          isActive: true,
-          ssoUrl: ssoUrl || `https://${cleanSlug}.nxa.com.tr/auth/sso`,
-          features: parsedFeatures.map((f) => ({ title: f, description: f })),
-          plans: [
-            {
-              id: `plan_${cleanSlug}_pro`,
-              tier: "PRO",
-              name: `${body.title} Standart Lisans`,
-              description: isQuoteBased ? "Özel Teklif / Enterprise" : "Kurumsal Erişim ve SSO Entegrasyonu",
-              monthlyPrice,
-              yearlyPrice,
-              currency: "TRY",
-              features: parsedFeatures,
-              maxUsers: 10,
-              storageGb: 50,
-            },
-          ],
-          addons: [],
-        };
-
         revalidatePath("/urunler");
         revalidatePath(`/urunler/${cleanSlug}`);
+        revalidatePath("/admin");
         revalidatePath("/admin/urunler");
         revalidatePath("/admin/urun-ekle");
         revalidatePath("/profil");

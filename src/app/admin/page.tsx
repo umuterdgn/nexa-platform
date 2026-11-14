@@ -1,9 +1,5 @@
 import Link from "next/link";
-import { connectMongoDB } from "@/lib/mongodb";
-import User from "@/models/User";
-import { Product } from "@/models/Product";
-import { Subscription } from "@/models/Subscription";
-import { getAllCrmLeads } from "@/lib/services/crm-service";
+import { prisma } from "@/lib/prisma";
 import {
   Users,
   Package,
@@ -14,35 +10,44 @@ import {
   PlusCircle,
   Activity,
   ArrowRight,
-  Globe,
-  Radio,
-  Eye,
   CheckCircle2,
   Clock,
+  Inbox,
   Layers,
 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminOverview() {
-  await connectMongoDB();
-
-  const _forceP = Product.modelName;
-  const _forceS = Subscription?.modelName;
-
-  const [users, products, totalActiveSubs, leads] = await Promise.all([
-    User.find({}).lean().catch(() => []),
-    Product.find({}).sort({ salesCount: -1 }).limit(4).lean().catch(() => []),
-    Subscription.countDocuments({ status: "active" }).catch(() => 2),
-    getAllCrmLeads().catch(() => []),
+  // Tüm Dashboard metrikleri doğrudan Prisma veritabanından çekilir (Mock data kesinlikle kullanılmaz)
+  const [
+    totalCustomers,
+    totalActiveOrders,
+    pendingLeadsCount,
+    wonLeadsCount,
+    recentLeads,
+    recentProducts,
+  ] = await Promise.all([
+    prisma.user.count({ where: { role: { not: "admin" } } }).catch(() => 0),
+    prisma.order.count({ where: { status: "SUCCESS" } }).catch(() => 0),
+    prisma.lead.count({ where: { status: "NEW" } }).catch(() => 0),
+    prisma.lead.count({ where: { status: "CLOSED" } }).catch(() => 0),
+    prisma.lead
+      .findMany({
+        take: 5,
+        orderBy: { createdAt: "desc" },
+      })
+      .catch(() => []),
+    prisma.product
+      .findMany({
+        take: 4,
+        orderBy: { createdAt: "desc" },
+        include: { plans: true },
+      })
+      .catch(() => []),
   ]);
 
-  const customers = (users as any[]).filter((u) => u.role !== "admin");
-  const gaId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || "G-NEXA2026B2B";
-
-  const pendingLeads = leads.filter((l) => l.status === "NEW");
-  const wonLeads = leads.filter((l) => l.status === "CLOSED");
-  const contactedLeads = leads.filter((l) => l.status === "EMAILED");
+  const gaId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || null;
 
   return (
     <div className="p-6 sm:p-10 lg:p-12 space-y-10 bg-slate-950 text-slate-100 min-h-screen">
@@ -70,11 +75,11 @@ export default async function AdminOverview() {
             <span>+ Dinamik Ürün / SSO Ekle</span>
           </Link>
           <Link
-            href="/admin/teklifler"
+            href="/admin/crm"
             className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 font-bold text-xs transition flex items-center gap-2"
           >
             <Target className="w-4 h-4 text-cyan-400" />
-            <span>CRM Kanban Board</span>
+            <span>CRM & Teklifler (Kanban)</span>
           </Link>
         </div>
       </div>
@@ -89,11 +94,13 @@ export default async function AdminOverview() {
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500" />
                 </span>
-                CANLI TRAFİK AKIŞI AKTİF
+                {gaId ? "GA4 TELEMETRİ BAĞLI" : "GA4 YAPILANDIRMA BEKLİYOR"}
               </span>
-              <span className="text-xs font-mono text-slate-400">
-                Ölçüm Kimliği: <strong className="text-white">{gaId}</strong>
-              </span>
+              {gaId && (
+                <span className="text-xs font-mono text-slate-400">
+                  Ölçüm Kimliği: <strong className="text-white">{gaId}</strong>
+                </span>
+              )}
             </div>
 
             <h2 className="text-xl sm:text-2xl font-black text-white">
@@ -101,26 +108,8 @@ export default async function AdminOverview() {
             </h2>
             <p className="text-xs sm:text-sm text-slate-300 max-w-2xl leading-relaxed">
               `layout.tsx` içerisine enjekte edilen GA4 motoru ile anlık ziyaretçiler, coğrafi konumlar,
-              oturum süreleri ve en çok incelenen ürün sayfaları (`/urunler/nexa-erp`, `/urunler/tam-vaktinde`, `/profil`)
-              canlı olarak takip edilmektedir.
+              oturum süreleri ve ürün sayfaları canlı olarak takip edilmektedir.
             </p>
-
-            {/* Hızlı Canlı Sayfalar Dökümü */}
-            <div className="pt-2 flex flex-wrap items-center gap-2 text-xs font-mono">
-              <span className="text-slate-400">En Çok Ziyaret Edilen Rotalar:</span>
-              <span className="px-2.5 py-1 rounded-lg bg-slate-950 border border-slate-800 text-cyan-300">
-                / (Ana Sayfa)
-              </span>
-              <span className="px-2.5 py-1 rounded-lg bg-slate-950 border border-slate-800 text-emerald-300">
-                /urunler/nexa-erp
-              </span>
-              <span className="px-2.5 py-1 rounded-lg bg-slate-950 border border-slate-800 text-blue-300">
-                /urunler/tam-vaktinde
-              </span>
-              <span className="px-2.5 py-1 rounded-lg bg-slate-950 border border-slate-800 text-purple-300">
-                /profil (Müşteri Portalı)
-              </span>
-            </div>
           </div>
 
           {/* GA4 Doğrudan Konsol Butonu */}
@@ -142,58 +131,58 @@ export default async function AdminOverview() {
         </div>
       </section>
 
-      {/* 3. ANA PERFORMANS & CRM METRİKLERİ */}
+      {/* 3. ANA PERFORMANS & PRISMA VERİTABANI METRİKLERİ */}
       <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {/* Toplam Müşteri Portföyü */}
+        {/* Toplam Müşteri Portföyü (prisma.user.count) */}
         <div className="p-6 rounded-3xl border border-slate-800/80 bg-slate-900/40 backdrop-blur-xl">
           <div className="flex items-center justify-between text-xs font-mono text-slate-400">
-            <span>Kayıtlı Portföy (Müşteri)</span>
+            <span>Toplam Müşteri</span>
             <span className="p-2 rounded-xl bg-cyan-500/10 text-cyan-400">
               <Users className="w-4 h-4" />
             </span>
           </div>
           <div className="mt-3 text-3xl font-black text-white">
-            {customers.length || 8}
+            {totalCustomers}
           </div>
           <p className="mt-2 text-xs text-slate-400 font-mono">
-            Sisteme kayıtlı kurumsal hesaplar
+            Prisma `User` tablosundaki kayıtlı müşteriler
           </p>
         </div>
 
-        {/* Aktif SaaS Lisansı */}
+        {/* Satılan / Aktif Lisans (prisma.order.count({ where: { status: 'SUCCESS' } })) */}
         <div className="p-6 rounded-3xl border border-slate-800/80 bg-slate-900/40 backdrop-blur-xl">
           <div className="flex items-center justify-between text-xs font-mono text-slate-400">
-            <span>Aktif SaaS Lisansı</span>
+            <span>Satılan / Aktif Lisans</span>
             <span className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400">
               <Package className="w-4 h-4" />
             </span>
           </div>
           <div className="mt-3 text-3xl font-black text-white">
-            {totalActiveSubs}
+            {totalActiveOrders}
           </div>
           <p className="mt-2 text-xs text-emerald-400 font-mono flex items-center gap-1">
             <CheckCircle2 className="w-3 h-3" />
-            <span>Bulut sistemleri kullanan firmalar</span>
+            <span>Onaylanan başarılı siparişler (`SUCCESS`)</span>
           </p>
         </div>
 
-        {/* CRM Bekleyen Talepler */}
+        {/* Bekleyen Teklifler / Talepler (prisma.lead.count({ where: { status: 'NEW' } })) */}
         <div className="p-6 rounded-3xl border border-slate-800/80 bg-slate-900/40 backdrop-blur-xl">
           <div className="flex items-center justify-between text-xs font-mono text-slate-400">
-            <span>CRM & Bekleyen Talepler</span>
+            <span>Bekleyen Teklifler / Talepler</span>
             <span className="p-2 rounded-xl bg-amber-500/10 text-amber-400">
               <Clock className="w-4 h-4" />
             </span>
           </div>
           <div className="mt-3 text-3xl font-black text-white">
-            {pendingLeads.length} <span className="text-sm font-normal text-slate-400 font-mono">Bekliyor</span>
+            {pendingLeadsCount}
           </div>
           <p className="mt-2 text-xs text-amber-400 font-mono">
-            Görüşme sırasındaki talepler
+            `NEW` statüsündeki yeni müşteri talepleri
           </p>
         </div>
 
-        {/* Satışa Dönen (Kazanılan) */}
+        {/* Kazanılan Satışlar (prisma.lead.count({ where: { status: 'CLOSED' } })) */}
         <div className="p-6 rounded-3xl border border-slate-800/80 bg-slate-900/40 backdrop-blur-xl">
           <div className="flex items-center justify-between text-xs font-mono text-slate-400">
             <span>Kazanılan Satışlar</span>
@@ -202,112 +191,140 @@ export default async function AdminOverview() {
             </span>
           </div>
           <div className="mt-3 text-3xl font-black text-white">
-            {wonLeads.length} <span className="text-sm font-normal text-slate-400 font-mono">Müşteri</span>
+            {wonLeadsCount}
           </div>
           <p className="mt-2 text-xs text-blue-400 font-mono">
-            Sözleşme & Abonelik Tamamlandı
+            `CLOSED` statüsündeki tamamlanan anlaşmalar
           </p>
         </div>
       </section>
 
-      {/* 4. CRM KANBAN VE SON GELEN TALEPLER BÖLÜMÜ */}
+      {/* 4. SON GELEN TALEPLER TABLOSU (prisma.lead.findMany({ take: 5, orderBy: { createdAt: 'desc' } })) */}
       <section className="p-6 sm:p-8 rounded-3xl border border-slate-800/80 bg-slate-900/40 backdrop-blur-xl space-y-6">
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-5">
           <div>
             <span className="text-xs font-mono uppercase tracking-wider text-cyan-400 font-bold block">
-              Satış Hunisi & Lead Akışı
+              Satış Hunisi & Lead Akışı (Son 5 Kayıt)
             </span>
             <h2 className="text-2xl font-black text-white tracking-tight">
-              Son Gelen Teklif & Strateji Toplantısı Talepleri
+              Son Gelen Talepler
             </h2>
           </div>
 
           <Link
-            href="/admin/teklifler"
+            href="/admin/crm"
             className="text-xs font-mono font-bold text-cyan-400 hover:text-cyan-300 transition flex items-center gap-1.5"
           >
-            <span>Tüm Kanban Board&apos;u Aç</span>
+            <span>Tüm CRM & Kanban Panosunu Aç</span>
             <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
 
-        {leads.length === 0 ? (
-          <p className="text-sm text-slate-400 py-6 text-center font-mono">
-            Henüz bekleyen talep bulunmuyor.
-          </p>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {leads.slice(0, 3).map((lead) => (
-              <div
-                key={lead.id}
-                className="p-5 rounded-2xl border border-slate-800 bg-slate-950/60 hover:border-cyan-500/40 transition space-y-3"
+        {recentLeads.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-slate-800 bg-slate-950/50 p-12 text-center space-y-4">
+            <div className="mx-auto w-12 h-12 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-500">
+              <Inbox className="w-6 h-6" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-sm font-bold text-white">
+                Henüz veri bulunmuyor
+              </h3>
+              <p className="text-xs text-slate-400 max-w-md mx-auto">
+                Henüz veri bulunmuyor. Yeni bir kayıt eklemek için butona tıklayın.
+              </p>
+            </div>
+            <div>
+              <Link
+                href="/admin/crm"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 text-xs font-mono font-bold transition"
               >
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h3 className="text-sm font-bold text-white">{lead.name}</h3>
-                    <p className="text-xs text-slate-400">{lead.companyName || "Bireysel / Girişim"}</p>
-                  </div>
-                  <span
-                    className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold border ${
-                      lead.status === "NEW"
-                        ? "bg-amber-500/10 text-amber-400 border-amber-500/30"
-                        : lead.status === "EMAILED"
-                        ? "bg-blue-500/10 text-blue-400 border-blue-500/30"
-                        : lead.status === "MEETING_SET"
-                        ? "bg-purple-500/10 text-purple-400 border-purple-500/30"
-                        : lead.status === "CLOSED"
-                        ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
-                        : "bg-slate-500/10 text-slate-400 border-slate-500/30"
-                    }`}
-                  >
-                    {lead.status === "NEW"
-                      ? "Yeni Aday"
-                      : lead.status === "EMAILED"
-                      ? "Mail Atıldı"
-                      : lead.status === "MEETING_SET"
-                      ? "Toplantı Alındı"
-                      : lead.status === "CLOSED"
-                      ? "Satış Kapandı"
-                      : "Kayıp"}
-                  </span>
-                </div>
-
-                {lead.productTitle && (
-                  <div className="px-2.5 py-1 rounded-lg bg-cyan-500/10 text-cyan-300 text-xs font-mono">
-                    {lead.productTitle}
-                  </div>
-                )}
-
-                {lead.notes && (
-                  <p className="text-xs text-slate-300 line-clamp-2 leading-relaxed">
-                    {lead.notes}
-                  </p>
-                )}
-
-                <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs font-mono text-slate-400">
-                  <span>{lead.email}</span>
-                  <Link
-                    href="/admin/teklifler"
-                    className="text-cyan-400 hover:underline font-bold"
-                  >
-                    Yönet &rarr;
-                  </Link>
-                </div>
-              </div>
-            ))}
+                <PlusCircle className="w-4 h-4" />
+                <span>CRM Panosundan Yeni Kayıt Ekle</span>
+              </Link>
+            </div>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm text-slate-300">
+              <thead className="border-b border-slate-800 bg-slate-950/60 text-[11px] font-mono uppercase text-slate-400">
+                <tr>
+                  <th className="py-3.5 px-4">Müşteri / Kurum</th>
+                  <th className="py-3.5 px-4">E-Posta & Telefon</th>
+                  <th className="py-3.5 px-4">Talep Edilen Ürün</th>
+                  <th className="py-3.5 px-4">Durum</th>
+                  <th className="py-3.5 px-4">Tarih</th>
+                  <th className="py-3.5 px-4 text-right">İşlem</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800/70">
+                {recentLeads.map((lead) => (
+                  <tr key={lead.id} className="hover:bg-slate-800/30 transition">
+                    <td className="py-3.5 px-4">
+                      <div className="font-bold text-white">
+                        {lead.name || lead.email.split("@")[0]}
+                      </div>
+                      {(lead.company || lead.companyName) && (
+                        <div className="text-xs text-slate-400">
+                          {lead.company || lead.companyName}
+                        </div>
+                      )}
+                    </td>
+                    <td className="py-3.5 px-4 text-xs font-mono">
+                      <div className="text-slate-300">{lead.email}</div>
+                      {lead.phone && <div className="text-slate-500">{lead.phone}</div>}
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <span className="inline-block text-xs font-mono px-2.5 py-1 rounded-lg bg-cyan-500/10 text-cyan-300 border border-cyan-500/20">
+                        {lead.requestedProduct || lead.campaignType || lead.productTitle || "Belirtilmedi"}
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <span
+                        className={`px-2.5 py-1 rounded-full text-[10px] font-mono font-bold border ${
+                          lead.status === "NEW"
+                            ? "bg-amber-500/10 text-amber-400 border-amber-500/30"
+                            : lead.status === "CONTACTED"
+                            ? "bg-cyan-500/10 text-cyan-400 border-cyan-500/30"
+                            : lead.status === "EMAILED"
+                            ? "bg-blue-500/10 text-blue-400 border-blue-500/30"
+                            : lead.status === "MEETING_SET"
+                            ? "bg-purple-500/10 text-purple-400 border-purple-500/30"
+                            : lead.status === "CLOSED"
+                            ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                            : "bg-slate-500/10 text-slate-400 border-slate-500/30"
+                        }`}
+                      >
+                        {lead.status}
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4 text-xs font-mono text-slate-400">
+                      {new Date(lead.createdAt).toLocaleDateString("tr-TR")}
+                    </td>
+                    <td className="py-3.5 px-4 text-right">
+                      <Link
+                        href="/admin/crm"
+                        className="text-xs font-mono font-bold text-cyan-400 hover:underline"
+                      >
+                        Yönet &rarr;
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </section>
 
-      {/* 5. EN ÇOK TERCİH EDİLEN ÇÖZÜMLER (PRİSMA / MONGO KATALOĞU) */}
+      {/* 5. SON EKLENEN ÜRÜNLER (prisma.product.findMany) */}
       <section className="p-6 sm:p-8 rounded-3xl border border-slate-800/80 bg-slate-900/40 backdrop-blur-xl space-y-6">
         <div className="flex items-center justify-between border-b border-slate-800 pb-5">
           <div>
             <span className="text-xs font-mono uppercase tracking-wider text-cyan-400 font-bold block">
-              Prisma & MongoDB Vitrini
+              Prisma Veritabanı Kataloğu
             </span>
             <h2 className="text-2xl font-black text-white tracking-tight">
-              Öne Çıkan SaaS ve Platform Paketleri
+              Kayıtlı SaaS ve Platform Ürünleri
             </h2>
           </div>
 
@@ -320,74 +337,85 @@ export default async function AdminOverview() {
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[
-            {
-              title: "Nexa ERP (İnşaat CDE)",
-              slug: "nexa-erp",
-              ssoUrl: "https://erp.nxa.com.tr/auth/sso",
-              badge: "3D BIM & CDE",
-              price: "2.390 ₺",
-            },
-            {
-              title: "Tam Vaktinde SaaS",
-              slug: "tam-vaktinde",
-              ssoUrl: "https://tamvaktinde.com.tr/auth/sso",
-              badge: "Mobil Saha OS",
-              price: "1.490 ₺",
-            },
-            {
-              title: "Ek 5 AI Görsel Jetonu",
-              slug: "ai_token_5",
-              ssoUrl: "https://tamvaktinde.com.tr/auth/sso?module=ai_visual",
-              badge: "Jeton Kredisi",
-              price: "490 ₺",
-            },
-            {
-              title: "Nexa POS & QR Kasa",
-              slug: "nexa-pos",
-              ssoUrl: "https://pos.nxa.com.tr/auth/sso",
-              badge: "STM Donanım Uyumlu",
-              price: "1.190 ₺",
-            },
-          ].map((item) => (
-            <div
-              key={item.slug}
-              className="p-5 rounded-2xl border border-slate-800 bg-slate-950/60 space-y-3"
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-white">{item.title}</span>
-                <span className="px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 text-[10px] font-mono">
-                  {item.badge}
-                </span>
-              </div>
-              <p className="text-xs font-mono text-cyan-300">
-                Fiyat: <strong className="text-white">{item.price}</strong> / Ay
-              </p>
-              <div className="pt-2 border-t border-slate-800/80 text-[11px] font-mono text-slate-400 truncate">
-                SSO: <span className="text-slate-300">{item.ssoUrl}</span>
-              </div>
-              <div className="pt-1 flex items-center justify-between text-xs">
-                <Link
-                  href={`/urunler/${item.slug}`}
-                  target="_blank"
-                  className="text-cyan-400 hover:underline font-mono text-xs flex items-center gap-1"
-                >
-                  <span>Vitrin Sayfası</span>
-                  <ExternalLink className="w-3 h-3" />
-                </Link>
-                <a
-                  href={`/sso?slug=${item.slug}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-emerald-400 hover:underline font-mono text-xs"
-                >
-                  SSO Test &rarr;
-                </a>
-              </div>
+        {recentProducts.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-slate-800 bg-slate-950/50 p-12 text-center space-y-4">
+            <div className="mx-auto w-12 h-12 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-500">
+              <Layers className="w-6 h-6" />
             </div>
-          ))}
-        </div>
+            <div className="space-y-1">
+              <h3 className="text-sm font-bold text-white">
+                Henüz veri bulunmuyor
+              </h3>
+              <p className="text-xs text-slate-400 max-w-md mx-auto">
+                Henüz veri bulunmuyor. Yeni bir kayıt eklemek için butona tıklayın.
+              </p>
+            </div>
+            <div>
+              <Link
+                href="/admin/urun-ekle"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 text-xs font-mono font-bold transition"
+              >
+                <PlusCircle className="w-4 h-4" />
+                <span>+ Yeni Ürün / SSO Ekle</span>
+              </Link>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {recentProducts.map((item) => {
+              const firstPlan = item.plans?.[0];
+              const priceDisplay =
+                item.pricingType === "QUOTE_BASED"
+                  ? "Özel Teklif"
+                  : firstPlan
+                  ? `${Number(firstPlan.monthlyPrice).toLocaleString("tr-TR")} ₺`
+                  : "Belirtilmedi";
+
+              return (
+                <div
+                  key={item.id}
+                  className="p-5 rounded-2xl border border-slate-800 bg-slate-950/60 space-y-3"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-bold text-white truncate">
+                      {item.title}
+                    </span>
+                    {item.badge && (
+                      <span className="px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 text-[10px] font-mono shrink-0">
+                        {item.badge}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs font-mono text-cyan-300">
+                    Fiyat: <strong className="text-white">{priceDisplay}</strong>
+                  </p>
+                  <div className="pt-2 border-t border-slate-800/80 text-[11px] font-mono text-slate-400 truncate">
+                    SSO:{" "}
+                    <span className="text-slate-300">
+                      {item.ssoUrl || "Tanımlanmadı"}
+                    </span>
+                  </div>
+                  <div className="pt-1 flex items-center justify-between text-xs">
+                    <Link
+                      href={`/urunler/${item.slug}`}
+                      target="_blank"
+                      className="text-cyan-400 hover:underline font-mono text-xs flex items-center gap-1"
+                    >
+                      <span>Vitrin Sayfası</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </Link>
+                    <Link
+                      href="/admin/urunler"
+                      className="text-emerald-400 hover:underline font-mono text-xs"
+                    >
+                      Düzenle &rarr;
+                    </Link>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </section>
     </div>
   );

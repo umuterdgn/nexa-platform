@@ -494,9 +494,33 @@ export function CrmDashboardClient({ initialLeads }: Props) {
         </div>
       </div>
 
-      {/* 3. KANBAN GÖRÜNÜMÜ */}
-      {viewMode === "kanban" ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4 items-start">
+      {/* 3. BOŞ DURUM (EMPTY STATE) VEYA KANBAN / TABLO GÖRÜNÜMÜ */}
+      {leads.length === 0 ? (
+        <div className="rounded-3xl border border-dashed border-slate-800 bg-slate-900/40 backdrop-blur-xl p-16 text-center space-y-5">
+          <div className="mx-auto w-16 h-16 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-center text-cyan-400">
+            <Inbox className="w-8 h-8" />
+          </div>
+          <div className="space-y-1.5 max-w-md mx-auto">
+            <h3 className="text-lg font-bold text-white">
+              Henüz veri bulunmuyor
+            </h3>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Henüz veri bulunmuyor. Yeni bir kayıt eklemek için butona tıklayın.
+            </p>
+          </div>
+          <div>
+            <button
+              type="button"
+              onClick={() => setIsAddModalOpen(true)}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-xs font-bold text-white shadow-lg shadow-cyan-500/20 transition cursor-pointer"
+            >
+              <PlusCircle className="w-4 h-4" />
+              <span>+ Manuel Lead Ekle</span>
+            </button>
+          </div>
+        </div>
+      ) : viewMode === "kanban" ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-4 items-start">
           {STAGES.map((col) => {
             const colLeads = filteredLeads.filter((l) => l.status === col.key);
 

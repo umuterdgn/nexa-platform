@@ -1,12 +1,10 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { connectMongoDB } from "@/lib/mongodb";
-import { Subscription } from "@/models/Subscription";
+import { prisma } from "@/lib/prisma";
 
 export async function POST(req: Request) {
   try {
-    // Sadece admin yetkisi olanlar bu tetikleyiciyi kullanabilir
     const session = await getServerSession(authOptions);
     if (!session || session.user?.role !== "admin") {
       return NextResponse.json({ error: "Yetkisiz Erişim" }, { status: 403 });
@@ -18,15 +16,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Abonelik ID eksik" }, { status: 400 });
     }
 
-    await connectMongoDB();
-
-    // Aboneliğin durumunu 'cancelled' olarak güncelliyoruz.
-    // Artık bu müşteri profiline girdiğinde ürünü aktif kullanamayacak.
-    const updatedSub = await Subscription.findByIdAndUpdate(
-      subscriptionId,
-      { $set: { status: "cancelled", endDate: new Date() } }, // Süreyi de anında bitiriyoruz
-      { new: true },
-    );
+    const updatedSub = await prisma.subscription.update({
+      where: { id: subscriptionId },
+      data: {
+        status: "expired",
+        endDate: new Date(),
+      },
+    });
 
     if (!updatedSub) {
       return NextResponse.json(

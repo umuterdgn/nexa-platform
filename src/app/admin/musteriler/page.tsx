@@ -1,63 +1,68 @@
-import { connectMongoDB } from "@/lib/mongodb";
-import User from "@/models/User";
-import { Product } from "@/models/Product";
-import { Subscription } from "@/models/Subscription";
+import { prisma } from "@/lib/prisma";
 import { CustomerClient } from "./CustomerClient";
 
 export const dynamic = "force-dynamic";
 
+export const metadata = {
+  title: "Müşteri Portföyü & Abonelikler | Nexa Admin",
+  description: "Prisma veritabanındaki tüm kayıtlı kurumsal müşteriler ve aktif lisans süreleri.",
+};
+
 export default async function AdminCustomersPage() {
-  await connectMongoDB();
+  let serializedCustomers: any[] = [];
 
-  // Şema tetikleyicileri (Populate işlemi için modellerin önceden yüklenmesi şarttır)
-  const _forceP = Product.modelName;
-  const _forceS = Subscription.modelName;
-
-  // Sadece müşterileri çekiyoruz ve içindeki subscriptions dizisini Product detaylarıyla birlikte genişletiyoruz
-  const customers = await User.find({ role: { $ne: "admin" } })
-    .populate({
-      path: "subscriptions",
-      model: Subscription,
-      populate: {
-        path: "productId",
-        model: Product,
+  try {
+    const customers = await prisma.user.findMany({
+      where: {
+        role: { not: "admin" },
       },
-    })
-    .sort({ createdAt: -1 })
-    .lean();
+      include: {
+        subscriptions: {
+          include: {
+            product: true,
+            plan: true,
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
 
-  // Next.js Server Component -> Client Component veri aktarımı için güvenli serileştirme
-  const serializedCustomers = customers.map((c: any) => ({
-    id: c._id.toString(),
-    name: c.name,
-    email: c.email,
-    createdAt: c.createdAt.toISOString(),
-    subscriptions: (c.subscriptions || []).map((s: any) => ({
-      id: s._id.toString(),
-      status: s.status,
-      startDate: s.startDate.toISOString(),
-      endDate: s.endDate.toISOString(),
-      product: s.productId
-        ? {
-            id: s.productId._id.toString(),
-            title: s.productId.title,
-            type: s.productId.type,
-          }
-        : null,
-    })),
-  }));
+    serializedCustomers = customers.map((c) => ({
+      id: c.id,
+      name: c.name || c.email.split("@")[0],
+      email: c.email,
+      companyName: c.companyName || null,
+      phone: c.phone || null,
+      createdAt: new Date(c.createdAt).toISOString(),
+      subscriptions: (c.subscriptions || []).map((s) => ({
+        id: s.id,
+        status: s.status,
+        startDate: new Date(s.startDate).toISOString(),
+        endDate: new Date(s.endDate).toISOString(),
+        product: s.product
+          ? {
+              id: s.product.id,
+              title: s.product.title,
+              type: s.product.pricingType,
+            }
+          : null,
+      })),
+    }));
+  } catch (err) {
+    console.warn("[AdminCustomersPage] Prisma müşteri sorgu uyarısı:", err);
+  }
 
   return (
-    <div className="p-8 lg:p-12">
+    <div className="p-8 lg:p-12 bg-slate-950 min-h-screen">
       <div className="mb-8">
-        <p className="text-sm font-medium uppercase tracking-widest text-nexa-electric-bright">
-          Müşteri İlişkileri
+        <p className="text-xs font-mono font-bold uppercase tracking-widest text-cyan-400">
+          Prisma ORM &bull; Müşteri İlişkileri
         </p>
         <h1 className="mt-2 font-display text-3xl font-bold tracking-tight text-white">
-          CRM & Müşteri Yönetimi
+          Müşteri Portföyü & Abonelik Yönetimi
         </h1>
         <p className="mt-2 text-slate-400 text-sm">
-          Sistemdeki tüm müşterileri filtreleyin, aktif lisans sürelerini takip
+          Veritabanındaki tüm kayıtlı müşterileri filtreleyin, aktif lisans sürelerini takip
           edin ve hesap hareketlerini yönetin.
         </p>
       </div>

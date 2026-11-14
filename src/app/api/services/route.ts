@@ -2,9 +2,7 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { connectMongoDB } from "@/lib/mongodb";
-import { Product } from "@/models/Product";
-import { buildPricingFromLegacy } from "@/lib/product-pricing";
+import { prisma } from "@/lib/prisma";
 
 function slugify(text: string): string {
   return text
@@ -14,71 +12,42 @@ function slugify(text: string): string {
     .replace(/\s+/g, "-");
 }
 
-function resolveBusinessId(session: {
-  user: { id?: string; businessId?: string };
-}) {
-  return session.user.businessId ?? session.user.id ?? "";
-}
-
-function buildServicePayload(body: Record<string, unknown>, businessId: string) {
-  const price = Number(body.pricingOneTime ?? body.price ?? 0);
-
-  const pricing = buildPricingFromLegacy({
-    price,
-    type: "service",
-    pricing: {
-      oneTime: price,
-      currency: (body.currency as "TRY" | "USD" | "EUR") ?? "TRY",
-    },
-  });
-
-  return {
-    title: body.title as string,
-    slug: slugify((body.slug as string) || (body.title as string)),
-    description: body.description as string,
-    type: "service" as const,
-    businessId,
-    pricing,
-    price,
-    discountPrice: 0,
-    durationDays: 0,
-    features: Array.isArray(body.features)
-      ? body.features
-      : String(body.features ?? "")
-          .split(",")
-          .map((f) => f.trim())
-          .filter(Boolean),
-    requiredFields: Array.isArray(body.requiredFields)
-      ? body.requiredFields
-      : String(body.requiredFields ?? "")
-          .split(",")
-          .map((f) => f.trim())
-          .filter(Boolean),
-    usageQuotas: {
-      maxUsers: body.maxUsers ? Number(body.maxUsers) : undefined,
-      maxTransactions: body.maxTransactions
-        ? Number(body.maxTransactions)
-        : undefined,
-    },
-    isActive: body.isActive !== false,
-    sortOrder: body.sortOrder ? Number(body.sortOrder) : 0,
-  };
-}
-
 /** GET — Public: vitrindeki aktif hizmetler */
 export async function GET() {
   try {
-    await connectMongoDB();
-    const _force = Product.modelName;
+    const dbServices = await prisma.product.findMany({
+      where: {
+        isActive: true,
+        OR: [
+          { pricingType: "QUOTE_BASED" },
+          { category: "Custom Software" },
+        ],
+      },
+      include: { plans: true },
+      orderBy: { createdAt: "desc" },
+    });
 
-    const services = await Product.find({
-      type: "service",
-      isActive: { $ne: false },
-    })
-      .sort({ sortOrder: 1, createdAt: -1 })
-      .lean();
+    const formatted = dbServices.map((s) => {
+      const price = Number(s.plans?.[0]?.monthlyPrice ?? 0);
+      const features = Array.isArray(s.features) ? s.features.map(String) : [];
 
-    return NextResponse.json(services);
+      return {
+        _id: s.id,
+        title: s.title,
+        slug: s.slug,
+        description: s.description,
+        type: "service",
+        price,
+        pricing: {
+          oneTime: price,
+          currency: "TRY",
+        },
+        features,
+        isActive: s.isActive,
+      };
+    });
+
+    return NextResponse.json(formatted);
   } catch (error) {
     console.error("Hizmetler listelenirken hata:", error);
     return NextResponse.json({ error: "Sunucu hatası" }, { status: 500 });
@@ -101,15 +70,43 @@ export async function POST(req: Request) {
       );
     }
 
-    await connectMongoDB();
-    const service = await Product.create(
-      buildServicePayload(body, resolveBusinessId(session)),
-    );
+    const price = Number(body.pricingOneTime ?? body.price ?? 0);
+    const slug = slugify((body.slug as string) || (body.title as string));
+    const features = Array.isArray(body.features)
+      ? body.features.map((f: string) => String(f))
+      : String(body.features ?? "")
+          .split(",")
+          .map((f) => f.trim())
+          .filter(Boolean);
+
+    const created = await prisma.product.create({
+      data: {
+        title: String(body.title),
+        slug,
+        description: String(body.description ?? ""),
+        category: "Custom Software",
+        pricingType: "QUOTE_BASED",
+        features,
+        isActive: body.isActive !== false,
+        plans: {
+          create: [
+            {
+              tier: "ENTERPRISE",
+              name: "Proje Bazlı",
+              monthlyPrice: price,
+              yearlyPrice: price,
+            },
+          ],
+        },
+      },
+      include: { plans: true },
+    });
 
     revalidatePath("/hizmetler");
     revalidatePath("/urunler");
+    revalidatePath("/admin/hizmetler");
 
-    return NextResponse.json({ success: true, service }, { status: 201 });
+    return NextResponse.json({ success: true, service: created }, { status: 201 });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Bilinmeyen hata";
     return NextResponse.json({ error: message }, { status: 500 });
@@ -131,21 +128,44 @@ export async function PUT(req: Request) {
       return NextResponse.json({ error: "Hizmet ID eksik" }, { status: 400 });
     }
 
-    await connectMongoDB();
-    const service = await Product.findOneAndUpdate(
-      { _id: serviceId, type: "service" },
-      { $set: buildServicePayload(body, resolveBusinessId(session)) },
-      { new: true, runValidators: true },
-    );
+    const price = Number(body.pricingOneTime ?? body.price ?? 0);
+    const slug = slugify((body.slug as string) || (body.title as string));
+    const features = Array.isArray(body.features)
+      ? body.features.map((f: string) => String(f))
+      : String(body.features ?? "")
+          .split(",")
+          .map((f) => f.trim())
+          .filter(Boolean);
 
-    if (!service) {
-      return NextResponse.json({ error: "Hizmet bulunamadı" }, { status: 404 });
-    }
+    await prisma.pricingPlan.deleteMany({ where: { productId: String(serviceId) } });
+
+    const updated = await prisma.product.update({
+      where: { id: String(serviceId) },
+      data: {
+        title: String(body.title),
+        slug,
+        description: String(body.description ?? ""),
+        features,
+        isActive: body.isActive !== false,
+        plans: {
+          create: [
+            {
+              tier: "ENTERPRISE",
+              name: "Proje Bazlı",
+              monthlyPrice: price,
+              yearlyPrice: price,
+            },
+          ],
+        },
+      },
+      include: { plans: true },
+    });
 
     revalidatePath("/hizmetler");
     revalidatePath("/urunler");
+    revalidatePath("/admin/hizmetler");
 
-    return NextResponse.json({ success: true, service });
+    return NextResponse.json({ success: true, service: updated });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Bilinmeyen hata";
     return NextResponse.json({ error: message }, { status: 500 });
@@ -167,18 +187,13 @@ export async function DELETE(req: Request) {
       return NextResponse.json({ error: "Hizmet ID eksik" }, { status: 400 });
     }
 
-    await connectMongoDB();
-    const deleted = await Product.findOneAndDelete({
-      _id: serviceId,
-      type: "service",
+    await prisma.product.delete({
+      where: { id: serviceId },
     });
-
-    if (!deleted) {
-      return NextResponse.json({ error: "Hizmet bulunamadı" }, { status: 404 });
-    }
 
     revalidatePath("/hizmetler");
     revalidatePath("/urunler");
+    revalidatePath("/admin/hizmetler");
 
     return NextResponse.json({ success: true });
   } catch (error: unknown) {

@@ -98,10 +98,36 @@ export function CustomerClient({
             </tr>
           </thead>
           <tbody className="divide-y divide-white/5">
-            {filteredCustomers.length === 0 ? (
+            {initialCustomers.length === 0 ? (
+              <tr>
+                <td colSpan={4} className="py-16 px-6 text-center">
+                  <div className="max-w-md mx-auto space-y-4">
+                    <div className="mx-auto w-14 h-14 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center text-cyan-400">
+                      <UserX className="w-6 h-6" />
+                    </div>
+                    <div className="space-y-1">
+                      <h3 className="text-base font-bold text-white">
+                        Henüz veri bulunmuyor
+                      </h3>
+                      <p className="text-xs text-slate-400">
+                        Henüz veri bulunmuyor. Yeni bir kayıt eklemek için butona tıklayın.
+                      </p>
+                    </div>
+                    <div className="pt-2">
+                      <a
+                        href="/admin/crm"
+                        className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 px-5 py-2.5 text-xs font-bold text-white shadow-lg shadow-cyan-500/20 hover:from-cyan-400 hover:to-blue-500 transition"
+                      >
+                        <span>CRM & Teklif Panosuna Git</span>
+                      </a>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            ) : filteredCustomers.length === 0 ? (
               <tr>
                 <td colSpan={4} className="py-8 text-center text-slate-500">
-                  Müşteri bulunamadı.
+                  Aramaya uygun müşteri bulunamadı.
                 </td>
               </tr>
             ) : (
